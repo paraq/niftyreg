@@ -1,0 +1,70 @@
+Value of the 22nd bit of a 32-bit quiet-NaN is 1TestQnanhibit.c produced following output:
+Change Dir: /home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_b306a/fast"
+/usr/bin/make -f CMakeFiles/cmTC_b306a.dir/build.make CMakeFiles/cmTC_b306a.dir/build
+make[1]: Entering directory '/home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_b306a.dir/TestQnanhibit.c.o
+/usr/bin/cc   -fopenmp    -o CMakeFiles/cmTC_b306a.dir/TestQnanhibit.c.o   -c /home/pbhosale/tools/nifty_reg/reg-io/nrrd/NrrdIO/CMake/TestQnanhibit.c
+Linking C executable cmTC_b306a
+/home/pbhosale/tools/cmake-3.8.0-rc1-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b306a.dir/link.txt --verbose=1
+/usr/bin/cc  -fopenmp     -rdynamic CMakeFiles/cmTC_b306a.dir/TestQnanhibit.c.o  -o cmTC_b306a 
+make[1]: Leaving directory '/home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp'
+-DTEEM_QNANHIBIT=1
+
+
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_dbdfc/fast"
+/usr/bin/make -f CMakeFiles/cmTC_dbdfc.dir/build.make CMakeFiles/cmTC_dbdfc.dir/build
+make[1]: Entering directory '/home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_dbdfc.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -fPIC    -o CMakeFiles/cmTC_dbdfc.dir/CheckSymbolExists.c.o   -c /home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_dbdfc
+/home/pbhosale/tools/cmake-3.8.0-rc1-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_dbdfc.dir/link.txt --verbose=1
+/usr/bin/cc -fPIC     -rdynamic CMakeFiles/cmTC_dbdfc.dir/CheckSymbolExists.c.o  -o cmTC_dbdfc 
+CMakeFiles/cmTC_dbdfc.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x1b): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_dbdfc.dir/build.make:97: recipe for target 'cmTC_dbdfc' failed
+make[1]: *** [cmTC_dbdfc] Error 1
+make[1]: Leaving directory '/home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_dbdfc/fast' failed
+make: *** [cmTC_dbdfc/fast] Error 2
+
+File /home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_9af15/fast"
+/usr/bin/make -f CMakeFiles/cmTC_9af15.dir/build.make CMakeFiles/cmTC_9af15.dir/build
+make[1]: Entering directory '/home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_9af15.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -fPIC -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_9af15.dir/CheckFunctionExists.c.o   -c /home/pbhosale/tools/cmake-3.8.0-rc1-Linux-x86_64/share/cmake-3.8/Modules/CheckFunctionExists.c
+Linking C executable cmTC_9af15
+/home/pbhosale/tools/cmake-3.8.0-rc1-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9af15.dir/link.txt --verbose=1
+/usr/bin/cc -fPIC -DCHECK_FUNCTION_EXISTS=pthread_create    -rdynamic CMakeFiles/cmTC_9af15.dir/CheckFunctionExists.c.o  -o cmTC_9af15 -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_9af15.dir/build.make:97: recipe for target 'cmTC_9af15' failed
+make[1]: *** [cmTC_9af15] Error 1
+make[1]: Leaving directory '/home/pbhosale/tools/nifty_reg/build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_9af15/fast' failed
+make: *** [cmTC_9af15/fast] Error 2
+
+
