@@ -19,6 +19,26 @@
 #include <iostream>
 
 
+void reg_getEntropies_gpu(nifti_image *targetImages,
+                      nifti_image *resultImages,
+                      unsigned int *target_bins, // should be an array of size num_target_volumes
+                      unsigned int *result_bins, // should be an array of size num_result_volumes
+                      double *probaJointHistogram,
+                      double *logJointHistogram,
+                      double *entropies,
+                      int *mask,
+                      bool approx)
+{
+						  
+	fprintf(stderr,"[NiftyReg ERROR] The GPU implementation of new entropy calculation \n");
+     exit(1);
+
+
+
+
+						  
+}
+
 /// Called when we have two target and two source image
 void reg_getEntropies2x2_gpu(nifti_image *targetImages,
                              nifti_image *resultImages,

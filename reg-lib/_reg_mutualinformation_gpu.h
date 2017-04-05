@@ -56,6 +56,18 @@ void reg_getVoxelBasedNMIGradientUsingPW2x2_gpu(nifti_image *targetImage,
                                                 double *entropies,
                                                 unsigned int *targetBinning,
                                                 unsigned int *resultBinning);
-
+//add declaration of new entropy 
+extern "C++"
+void reg_getEntropies_gpu(nifti_image *targetImages,
+                      nifti_image *resultImages,
+                      unsigned int *target_bins, // should be an array of size num_target_volumes
+                      unsigned int *result_bins, // should be an array of size num_result_volumes
+                      double *probaJointHistogram,
+                      double *logJointHistogram,
+                      double *entropies,
+                      int *mask,
+                      bool approx);
+					  
+												
 
 #endif
