@@ -44,7 +44,42 @@ texture<float, 3, cudaReadModeElementType> secondTargetImageTexture;
 texture<float, 1, cudaReadModeElementType> secondResultImageTexture;
 texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 
-
+ __global__ void reg_getJointHistogram_kernel(float* targetImage, float* resultImage,int* probaJointHistogram,int targetVoxelNumber)
+{
+	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
+	//printf("targetVoxelNumber=%d\n",targetVoxelNumber);
+	if (tid < targetVoxelNumber)
+	{
+		
+	  float target_values=targetImage[tid];
+	  //printf("[kernel debug]  index=%d target_values =%f\n",tid,target_values);
+	  float result_values;
+	  bool valid_values = true;
+	  __shared__ int added_value;
+	                if (target_values < 0 || target_values >= 68 /* || target_values != target_values */) 
+					{
+                    valid_values = false;
+                    }
+	 if (valid_values)
+	 {	 result_values=resultImage[tid];
+		
+		if (result_values <  0 ||
+                    result_values >= 68 /* ||
+                    result_values != result_values */) {
+                    valid_values = false;
+              }
+		 }
+	  if (valid_values)
+	  {		//printf("[kernel debug] here\n");
+		  atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*68],1);
+		  //atomicAdd(&added_value,1);
+		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
+		  
+	  }
+	
+	}
+	return;
+} 
 __device__ float GetBasisSplineValue(float x)
 {
     x=fabsf(x);
