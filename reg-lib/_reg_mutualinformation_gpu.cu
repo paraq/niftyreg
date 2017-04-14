@@ -14,9 +14,14 @@
 
 #include "_reg_blocksize_gpu.h"
 #include "_reg_mutualinformation_gpu.h"
+#include "_reg_tools.h"
 #include "_reg_mutualinformation_kernels.cu"
 #include <iostream>
-
+/* 	probaJointHistogram = reg_getEntropies_gpu(targetImage,
+                         resultImage,
+                         targetVoxelNumber,
+                         resultVoxelNumber,
+                         c_probaJointHistogram_int); */
 //new gpu getentropy function
 void reg_getEntropies_gpu(nifti_image *targetImage,
                       nifti_image *resultImage,
@@ -28,21 +33,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
                       int *mask,
                       bool approx)
 {	
-/* 	int nDevices;
 
-  cudaGetDeviceCount(&nDevices);
-  for (int i = 0; i < nDevices; i++) {
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, i);
-    printf("Device Number: %d\n", i);
-    printf("  Device name: %s\n", prop.name);
-    printf("  Memory Clock Rate (KHz): %d\n",
-           prop.memoryClockRate);
-    printf("  Memory Bus Width (bits): %d\n",
-           prop.memoryBusWidth);
-    printf("  Peak Memory Bandwidth (GB/s): %f\n\n",
-           2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
-  } */
   
 	//double *c_targetImage,*c_resultImage;
 	float *c_targetImage = static_cast<float *>(targetImage->data);
@@ -95,9 +86,9 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
         result_offsets[i] = 1;
         for (j = i; j > 0; --j) result_offsets[i] *= result_bins[j-1];
     }
-
     int num_probabilities = num_histogram_entries;
-	fprintf(stderr,"[NiftyReg Debug parag] Error at here 1 \n");
+	num_histogram_entries += total_target_entries + total_result_entries;
+
 	c_probaJointHistogram_int = (int *)malloc(num_histogram_entries * sizeof(int));
     memset(c_probaJointHistogram_int, 0, num_histogram_entries * sizeof(int));
     memset(probaJointHistogram, 0, num_histogram_entries * sizeof(double));
@@ -105,7 +96,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	fprintf(stderr,"[NiftyReg Debug parag] Error at here 2 \n");
 	
     // Space for storing the marginal entropies.
-    num_histogram_entries += total_target_entries + total_result_entries;
+
 	
 	//allocate memory 
  	//NR_CUDA_SAFE_CALL(cudaMalloc(&c_targetVoxelNumber,sizeof(int)));
@@ -117,7 +108,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	//NR_CUDA_SAFE_CALL(cudaMemset(c_probaJointHistogram,0,num_histogram_entries * sizeof(int)));
 	
 
-	fprintf(stderr,"[NiftyReg Debug parag] Error at here 3 \n");
+	//fprintf(stderr,"[NiftyReg Debug parag] Error at here 3 \n");
 	
 
 	NR_CUDA_SAFE_CALL((cudaMemcpy(c_targetImage, targetImage->data, targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
@@ -126,20 +117,20 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	
 	fprintf(stderr,"[NiftyReg Debug parag] Error at here 4 \n");
 	//NR_CUDA_SAFE_CALL((cudaMemcpy(c_targetVoxelNumber, &targetVoxelNumber, sizeof(int), cudaMemcpyHostToDevice)));
-	reg_getJointHistogram_kernel<<< targetVoxelNumber/1024,1024>>>(c_targetImage,c_resultImage,c_probaJointHistogram,targetVoxelNumber);
+	reg_getJointHistogram_kernel<<< targetVoxelNumber/1024,1024>>>(c_targetImage,c_resultImage,c_probaJointHistogram,targetVoxelNumber,total_target_entries);
 	cudaDeviceSynchronize();
 	fprintf(stderr,"[NiftyReg Debug parag] Error at here 4 \n");
 	fprintf(stderr,"[NiftyReg Debug parag] Error at here 5 \n");
 	NR_CUDA_SAFE_CALL((cudaMemcpy(c_probaJointHistogram_int, c_probaJointHistogram, num_histogram_entries * sizeof(int), cudaMemcpyDeviceToHost)));
-		for (i=0;i<num_histogram_entries;i++)
+/* 		for (i=0;i<num_histogram_entries;i++)
 	{
-		printf("[NiftyReg Debug parag] probaJointHistogram= %d\n",c_probaJointHistogram_int[i]);
+		printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %d\n",i,c_probaJointHistogram_int[i]);
 		
-	}
-	cudaFree(c_targetImage);
+	} */
+  cudaFree(c_targetImage);
   cudaFree(c_resultImage);
   cudaFree(c_probaJointHistogram);
-	
+  free(c_probaJointHistogram_int);
 	fprintf(stderr,"[NiftyReg ERROR] The GPU implementation of new entropy calculation \n");
      exit(1);
 
@@ -148,6 +139,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 
 						  
 }
+
 
 /// Called when we have two target and two source image
 void reg_getEntropies2x2_gpu(nifti_image *targetImages,

@@ -44,7 +44,7 @@ texture<float, 3, cudaReadModeElementType> secondTargetImageTexture;
 texture<float, 1, cudaReadModeElementType> secondResultImageTexture;
 texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 
- __global__ void reg_getJointHistogram_kernel(float* targetImage, float* resultImage,int* probaJointHistogram,int targetVoxelNumber)
+ __global__ void reg_getJointHistogram_kernel(float *targetImage, float *resultImage,int *probaJointHistogram,int targetVoxelNumber,int total_target_entries)
 {
 	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
 	//printf("targetVoxelNumber=%d\n",targetVoxelNumber);
@@ -56,7 +56,7 @@ texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 	  float result_values;
 	  bool valid_values = true;
 	  __shared__ int added_value;
-	                if (target_values < 0 || target_values >= 68 /* || target_values != target_values */) 
+	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
 					{
                     valid_values = false;
                     }
@@ -64,14 +64,17 @@ texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 	 {	 result_values=resultImage[tid];
 		
 		if (result_values <  0 ||
-                    result_values >= 68 /* ||
-                    result_values != result_values */) {
+                    result_values >= total_target_entries ||
+                    result_values != result_values) {
                     valid_values = false;
               }
 		 }
 	  if (valid_values)
 	  {		//printf("[kernel debug] here\n");
-		  atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*68],1);
+			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
+			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
+			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
+			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
 		  //atomicAdd(&added_value,1);
 		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
 		  

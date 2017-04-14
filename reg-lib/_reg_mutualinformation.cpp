@@ -150,17 +150,12 @@ void reg_getEntropies1(nifti_image *targetImage,
 {
     int num_target_volumes = targetImage->nt;
     int num_result_volumes = resultImage->nt;
-	int i, j, index;
+    int i, j, index;
 
-/* 	fprintf(stderr,"[NiftyReg Debug parag] num_result_volumes= %d\n",num_result_volumes);
-	fprintf(stderr,"[NiftyReg Debug parag] num_target_volumes= %d\n",num_target_volumes);
-	fprintf(stderr,"[NiftyReg Debug parag] target_bins= %u\n",*target_bins);
-	fprintf(stderr,"[NiftyReg Debug parag] result_bins= %u\n",*result_bins); */
-	//fprintf(stderr,"[NiftyReg Debug parag] approx= %d\n",approx);
     if(num_target_volumes>1 || num_result_volumes>1) approx=true;
 
     int targetVoxelNumber = targetImage->nx * targetImage->ny * targetImage->nz;
-	/* fprintf(stderr,"[NiftyReg Debug parag] targetVoxelNumber= %d\n",targetVoxelNumber); */
+
     DTYPE *targetImagePtr = static_cast<DTYPE *>(targetImage->data);
     DTYPE *resultImagePtr = static_cast<DTYPE *>(resultImage->data);
 
@@ -180,13 +175,9 @@ void reg_getEntropies1(nifti_image *targetImage,
         num_histogram_entries *= target_bins[i];
         total_target_entries *= target_bins[i];
         histogram_dimensions[i] = target_bins[i];
-		/* fprintf(stderr,"[NiftyReg Debug parag] target_bins= %d\n",num_histogram_entries); */
-		
+
         target_offsets[i] = 1;
-        for (j = i; j > 0; --j) {
-			fprintf(stderr,"[NiftyReg Debug parag] j= %d\n",j);
-			target_offsets[i] *= target_bins[j - 1];
-			}
+        for (j = i; j > 0; --j) target_offsets[i] *= target_bins[j - 1];
     }
 
     for (i = 0; i < num_result_volumes; ++i) {
@@ -202,7 +193,7 @@ void reg_getEntropies1(nifti_image *targetImage,
 
     // Space for storing the marginal entropies.
     num_histogram_entries += total_target_entries + total_result_entries;
-	//fprintf(stderr,"[NiftyReg Debug parag] num_histogram_entries= %d\n",num_histogram_entries);
+
     memset(probaJointHistogram, 0, num_histogram_entries * sizeof(double));
     memset(logJointHistogram, 0, num_histogram_entries * sizeof(double));
 
@@ -212,7 +203,7 @@ void reg_getEntropies1(nifti_image *targetImage,
     DTYPE result_values[10];
 
     bool valid_values;
-	int counter=0;
+
     DTYPE target_flat_index, result_flat_index;
     double voxel_number = 0., added_value;
 
@@ -239,16 +230,14 @@ void reg_getEntropies1(nifti_image *targetImage,
             added_value=0.;
             valid_values = true;
             target_flat_index = 0;
-			
+
             // Get the target values
             for (i = 0; i < num_target_volumes; ++i) {
                 target_values[i] = targetImagePtr[index+i*targetVoxelNumber];
-				//printf("[kernel debug] target_values =%f\n",&targetImage->data[i]);
                 if (target_values[i] < (DTYPE)0 ||
                     target_values[i] >= (DTYPE)target_bins[i] ||
                     target_values[i] != target_values[i]) {
                     valid_values = false;
-					
                     break;
                 }
                 target_flat_index += target_values[i] * (DTYPE)(target_offsets[i]);
@@ -258,16 +247,13 @@ void reg_getEntropies1(nifti_image *targetImage,
                 result_flat_index = 0;
                 // Get the result values
                 for (i = 0; i < num_result_volumes; ++i){
-                    //result_values[i] = resultImagePtr[index+i*targetVoxelNumber];
-					//printf("[kernel debug] result_values[i] =%d\n",result_values[i]);
+                    result_values[i] = resultImagePtr[index+i*targetVoxelNumber];
                     if (result_values[i] < (DTYPE)0 ||
                         result_values[i] >= (DTYPE)result_bins[i] ||
                         result_values[i] != result_values[i]) {
                         valid_values = false;
                         break;
                     }
-					counter=counter+1;
-					
                     result_flat_index += result_values[i] * (DTYPE)(result_offsets[i]);
                 }
             }
@@ -279,7 +265,6 @@ void reg_getEntropies1(nifti_image *targetImage,
 #else
                     probaJointHistogram[static_cast<int>(round(target_flat_index)) +
                             (static_cast<int>(round(result_flat_index)) * total_target_entries)]++;
-							printf("[NiftyReg Debug parag] probaJointHistogram= %f\n",probaJointHistogram[i]);
 #endif
                     added_value=1;
                 }
@@ -303,16 +288,16 @@ void reg_getEntropies1(nifti_image *targetImage,
                 }
             }
             voxel_number+=added_value;
-			
-        } //mask
-    }
-	for (i=0;i<num_histogram_entries;i++)
+        } //if mask loop ending
+    }//for loop ending targetvoxelnumber
+	
+			for (i=0;i<num_histogram_entries;i++)
 	{
-		printf("[NiftyReg Debug parag] probaJointHistogram= %f\n",probaJointHistogram[i]);
+		printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %f\n",i,probaJointHistogram[i]);
 		
 	}
+	printf("[NiftyReg Debug parag] number=%f\n",voxel_number);
 	exit(1);
-	//printf("[NiftyReg Debug parag] counter= %d\n",counter);
 #ifdef _OPENMP
 #pragma omp parallel for default(none) \
     shared(maxThreadNumber, num_histogram_entries, probaJointHistogram, tempHistogram) \
