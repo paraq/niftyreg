@@ -44,15 +44,18 @@ texture<float, 3, cudaReadModeElementType> secondTargetImageTexture;
 texture<float, 1, cudaReadModeElementType> secondResultImageTexture;
 texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 
- __global__ void reg_getJointHistogram_kernel(float *targetImage, float *resultImage,int *probaJointHistogram,int targetVoxelNumber,int total_target_entries)
+ __global__ void reg_getJointHistogram_kernel(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries)
 {
 	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
-	//printf("targetVoxelNumber=%d\n",targetVoxelNumber);
+	extern __shared__ int sdata[];
+	unsigned int td = threadIdx.x;
+	unsigned int value=0;
+	
 	if (tid < targetVoxelNumber)
 	{
-		
+		//unsigned int td = threadIdx.x;
 	  float target_values=targetImage[tid];
-	  //printf("[kernel debug]  index=%d target_values =%f\n",tid,target_values);
+	  
 	  float result_values;
 	  bool valid_values = true;
 	  __shared__ int added_value;
@@ -67,20 +70,40 @@ texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
                     result_values >= total_target_entries ||
                     result_values != result_values) {
                     valid_values = false;
+					
+					
               }
 		 }
 	  if (valid_values)
-	  {		//printf("[kernel debug] here\n");
+	  {		
 			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
 			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
 			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
 			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
+			value=1;
 		  //atomicAdd(&added_value,1);
 		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
 		  
 	  }
-	
+	  //sdata[td]=value;
+
 	}
+		  	sdata[td]=value;
+			//printf("sdata[td]=%d\n",value);
+			__syncthreads();
+			for(unsigned int s=1; s < blockDim.x; s *= 2) 
+			{
+			if (td % (2*s) == 0)
+			{
+				sdata[td] += sdata[td + s];
+			}
+				__syncthreads();
+		    }
+		if (td == 0) 
+		{
+		  c_voxel_number[blockIdx.x]=sdata[0];
+		  //printf("zero=%d",td);
+		}
 	return;
 } 
 __device__ float GetBasisSplineValue(float x)

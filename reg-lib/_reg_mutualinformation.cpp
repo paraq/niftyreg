@@ -16,6 +16,7 @@
 #include "_reg_tools.h"
 #include <iostream>
 
+#include <sys/time.h>
 /// Smooth the histogram along the given axes. Uses recursion
 template<class PrecisionTYPE>
 void smooth_axes(int axes, int current, PrecisionTYPE *histogram,
@@ -151,7 +152,10 @@ void reg_getEntropies1(nifti_image *targetImage,
     int num_target_volumes = targetImage->nt;
     int num_result_volumes = resultImage->nt;
     int i, j, index;
-
+	
+	struct timeval t1, t2;
+    double elapsedTime;
+	
     if(num_target_volumes>1 || num_result_volumes>1) approx=true;
 
     int targetVoxelNumber = targetImage->nx * targetImage->ny * targetImage->nz;
@@ -206,7 +210,7 @@ void reg_getEntropies1(nifti_image *targetImage,
 
     DTYPE target_flat_index, result_flat_index;
     double voxel_number = 0., added_value;
-
+ gettimeofday(&t1, NULL);
     // For now we only use the approximate PW approach for filling the joint histogram.
     // Fill the joint histogram using the classical approach
 #ifdef _OPENMP
@@ -222,6 +226,7 @@ void reg_getEntropies1(nifti_image *targetImage,
     result_flat_index, target_values, result_values, added_value) \
     reduction(+:voxel_number)
 #endif
+
     for (index=0; index<targetVoxelNumber; ++index){
 #ifdef _OPENMP
         tid = omp_get_thread_num();
@@ -291,12 +296,17 @@ void reg_getEntropies1(nifti_image *targetImage,
         } //if mask loop ending
     }//for loop ending targetvoxelnumber
 	
-			for (i=0;i<num_histogram_entries;i++)
+	gettimeofday(&t2, NULL);
+	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+    elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+	printf("[NiftyReg F3D] joint hist filing in CPU %f  sec\n", elapsedTime );
+	
+/* 			for (i=0;i<num_histogram_entries;i++)
 	{
 		printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %f\n",i,probaJointHistogram[i]);
 		
 	}
-	printf("[NiftyReg Debug parag] number=%f\n",voxel_number);
+	printf("[NiftyReg Debug parag] number=%f\n",voxel_number); */
 	exit(1);
 #ifdef _OPENMP
 #pragma omp parallel for default(none) \

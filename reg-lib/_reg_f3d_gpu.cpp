@@ -547,18 +547,7 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
 
     double measure=0.;
     if(this->currentFloating->nt==1){
-        reg_getEntropies(this->currentReference,
-                         this->warped,
-                         this->referenceBinNumber,
-                         this->floatingBinNumber,
-                         this->probaJointHistogram,
-                         this->logJointHistogram,
-                         this->entropies,
-                         this->currentMask,
-                         this->approxParzenWindow);
-
-	//calling new function					 
-/* 		reg_getEntropies_gpu(this->currentReference,
+ /*        reg_getEntropies(this->currentReference,
                          this->warped,
                          this->referenceBinNumber,
                          this->floatingBinNumber,
@@ -567,6 +556,17 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
                          this->entropies,
                          this->currentMask,
                          this->approxParzenWindow); */
+
+	//calling new function					 
+		reg_getEntropies_gpu(this->currentReference,
+                         this->warped,
+                         this->referenceBinNumber,
+                         this->floatingBinNumber,
+                         this->probaJointHistogram,
+                         this->logJointHistogram,
+                         this->entropies,
+                         this->currentMask,
+                         this->approxParzenWindow);
 
     }
 	
