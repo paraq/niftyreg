@@ -206,10 +206,14 @@ void reg_getEntropies1(nifti_image *targetImage,
     DTYPE target_values[10];
     DTYPE result_values[10];
 
-    bool valid_values;
+    bool valid_values,gpu=0;
 
     DTYPE target_flat_index, result_flat_index;
     double voxel_number = 0., added_value;
+	
+	
+	
+	
  gettimeofday(&t1, NULL);
     // For now we only use the approximate PW approach for filling the joint histogram.
     // Fill the joint histogram using the classical approach
@@ -299,7 +303,7 @@ void reg_getEntropies1(nifti_image *targetImage,
 	gettimeofday(&t2, NULL);
 	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
     elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
-	printf("[NiftyReg F3D] joint hist filing in CPU %f  sec\n", elapsedTime );
+	//printf("[NiftyReg F3D] joint hist filing in CPU %f  sec\n", elapsedTime );
 	
 /* 			for (i=0;i<num_histogram_entries;i++)
 	{
@@ -307,7 +311,7 @@ void reg_getEntropies1(nifti_image *targetImage,
 		
 	}
 	printf("[NiftyReg Debug parag] number=%f\n",voxel_number); */
-	exit(1);
+	
 #ifdef _OPENMP
 #pragma omp parallel for default(none) \
     shared(maxThreadNumber, num_histogram_entries, probaJointHistogram, tempHistogram) \
@@ -446,9 +450,234 @@ void reg_getEntropies1(nifti_image *targetImage,
     entropies[1] = result_entropy;
     entropies[2] = joint_entropy;
     entropies[3] = voxel_number;
-
+	
+/* 	printf("[NiftyReg Debug parag] entropies[0]=%f\n",entropies[0]);
+	printf("[NiftyReg Debug parag] entropies[1]=%f\n",entropies[1]);
+	printf("[NiftyReg Debug parag] entropies[2]=%f\n",entropies[2]);
+	printf("[NiftyReg Debug parag] entropies[3]=%f\n",entropies[3]);
+	
+	exit(1); */
     return;
 }
+
+/* template<class DTYPE>
+void reg_getEntropies2(nifti_image *targetImage,
+                       nifti_image *resultImage,
+                       unsigned int *target_bins,
+                       unsigned int *result_bins,
+                       double *probaJointHistogram,
+                       double *logJointHistogram,
+                       double *entropies,
+                       int *mask,
+                       bool approx)
+{
+    int num_target_volumes = targetImage->nt;
+    int num_result_volumes = resultImage->nt;
+    int i, j, index;
+	
+	struct timeval t1, t2;
+    double elapsedTime;
+	
+    if(num_target_volumes>1 || num_result_volumes>1) approx=true;
+
+    int targetVoxelNumber = targetImage->nx * targetImage->ny * targetImage->nz;
+	int resultVoxelNumber = resultImage->nx * resultImage->ny * resultImage->nz;
+
+    DTYPE *targetImagePtr = static_cast<DTYPE *>(targetImage->data);
+    DTYPE *resultImagePtr = static_cast<DTYPE *>(resultImage->data);
+
+    // Build up this arrays of offsets that will help us index the histogram entries
+    SafeArray<int> target_offsets(num_target_volumes);
+    SafeArray<int> result_offsets(num_result_volumes);
+
+    int num_histogram_entries = 1;
+    int total_target_entries = 1;
+    int total_result_entries = 1;
+
+    // Data pointers
+    SafeArray<int> histogram_dimensions(num_target_volumes + num_result_volumes);
+
+    // Calculate some constants and initialize the data pointers
+    for (i = 0; i < num_target_volumes; ++i) {
+        num_histogram_entries *= target_bins[i];
+        total_target_entries *= target_bins[i];
+        histogram_dimensions[i] = target_bins[i];
+
+        target_offsets[i] = 1;
+        for (j = i; j > 0; --j) target_offsets[i] *= target_bins[j - 1];
+    }
+
+    for (i = 0; i < num_result_volumes; ++i) {
+        num_histogram_entries *= result_bins[i];
+        total_result_entries *= result_bins[i];
+        histogram_dimensions[num_target_volumes + i] = result_bins[i];
+
+        result_offsets[i] = 1;
+        for (j = i; j > 0; --j) result_offsets[i] *= result_bins[j-1];
+    }
+
+    int num_probabilities = num_histogram_entries;
+
+    // Space for storing the marginal entropies.
+    num_histogram_entries += total_target_entries + total_result_entries;
+
+    memset(probaJointHistogram, 0, num_histogram_entries * sizeof(double));
+    memset(logJointHistogram, 0, num_histogram_entries * sizeof(double));
+
+    // These hold the current target and result values
+    // No more than 10 timepoints are assumed
+    DTYPE target_values[10];
+    DTYPE result_values[10];
+
+    bool valid_values;
+
+    DTYPE target_flat_index, result_flat_index;
+    double voxel_number = 0., added_value;
+ gettimeofday(&t1, NULL);
+    // For now we only use the approximate PW approach for filling the joint histogram.
+    // Fill the joint histogram using the classical approach
+	
+	probaJointHistogram=reg_getEntropies_gpu(targetImage,resultImage,num_histogram_entries,targetVoxelNumber,resultVoxelNumber);
+	
+	
+    int num_axes = num_target_volumes + num_result_volumes;
+    if(approx || targetImage->nt>1 || resultImage->nt>1){
+    // standard joint histogram filling has been used
+    // Joint histogram has to be smoothed
+        double window[3];
+        window[0] = window[2] = GetBasisSplineValue((double)(-1.0));
+        window[1] = GetBasisSplineValue((double)(0.0));
+
+        double *histogram=NULL;
+        double *result=NULL;
+
+        // Smooth along each of the axes
+        for (i = 0; i < num_axes; ++i)
+        {
+            // Use the arrays for storage of results
+            if (i % 2 == 0) {
+                result = logJointHistogram;
+                histogram = probaJointHistogram;
+            }
+            else {
+                result = probaJointHistogram;
+                histogram = logJointHistogram;
+            }
+            traverse_and_smooth_axes<double>(i, histogram, result, window,
+                                             num_axes, histogram_dimensions);
+        }
+
+        // We may need to transfer the result
+        if (result == logJointHistogram) memcpy(probaJointHistogram, logJointHistogram,
+                                                sizeof(double)*num_probabilities);
+    }// approx
+    memset(logJointHistogram, 0, num_histogram_entries * sizeof(double));
+
+    // Convert to probabilities
+    for(i = 0; i < num_probabilities; ++i) {
+        if (probaJointHistogram[i]) probaJointHistogram[i] /= voxel_number;
+    }
+
+    // Marginalise over all the result axes to generate the target entropy
+    double *data = probaJointHistogram;
+    double *store = logJointHistogram;
+    double current_value, current_log;
+
+    int count;
+    double target_entropy = 0;
+    {
+        SafeArray<double> scratch (num_probabilities/histogram_dimensions[num_axes - 1]);
+        // marginalise over the result axes
+        for (i = num_result_volumes-1, count = 0; i >= 0; --i, ++count)
+        {
+            traverse_and_sum_axes<double>(num_axes - count - 1,
+                                          data, store, num_axes - count,
+                                          histogram_dimensions);
+
+            if (count % 2 == 0) {
+                data = logJointHistogram;
+                store = scratch;
+            }
+            else {
+                data = scratch;
+                store = logJointHistogram;
+            }
+        }
+
+        // Generate target entropy
+        double *log_joint_target = &logJointHistogram[num_probabilities];
+
+        for (i = 0; i < total_target_entries; ++i)
+        {
+            current_value = data[i];            
+            current_log = 0;
+            if (current_value) current_log = log(current_value);
+            target_entropy -= current_value * current_log;
+            log_joint_target[i] = current_log;
+        }
+    }
+    memset(logJointHistogram, 0, num_probabilities * sizeof(double));
+    data = probaJointHistogram;
+    store = logJointHistogram;
+
+    // Marginalise over the target axes
+    double result_entropy = 0;
+    {
+        SafeArray<double> scratch (num_probabilities / histogram_dimensions[0]);
+        for (i = 0; i < num_target_volumes; ++i)
+        {
+            traverse_and_sum_axes<double>(0, data, store, num_axes - i, &histogram_dimensions[i]);
+            if (i % 2 == 0) {
+                data = logJointHistogram;
+                store = scratch;
+            }
+            else {
+                data = scratch;
+                store = logJointHistogram;
+            }
+        }
+        // Generate result entropy
+        double *log_joint_result = &logJointHistogram[num_probabilities+total_target_entries];
+
+        for (i = 0; i < total_result_entries; ++i)
+        {
+            current_value = data[i];            
+            current_log = 0;
+            if (current_value) current_log = log(current_value);
+            result_entropy -= current_value * current_log;
+            log_joint_result[i] = current_log;
+        }
+    }
+
+    // Generate joint entropy
+    double joint_entropy = 0;
+    for (i = 0; i < num_probabilities; ++i)
+    {
+        current_value = probaJointHistogram[i];        
+        current_log = 0;
+        if (current_value) current_log = log(current_value);
+        joint_entropy -= current_value * current_log;
+        logJointHistogram[i] = current_log;
+    }
+
+    entropies[0] = target_entropy;
+    entropies[1] = result_entropy;
+    entropies[2] = joint_entropy;
+    entropies[3] = voxel_number;
+	
+	printf("[NiftyReg Debug parag] entropies[0]=%f\n",entropies[0]);
+	printf("[NiftyReg Debug parag] entropies[1]=%f\n",entropies[1]);
+	printf("[NiftyReg Debug parag] entropies[2]=%f\n",entropies[2]);
+	printf("[NiftyReg Debug parag] entropies[3]=%f\n",entropies[3]);
+	
+	exit(1);
+    return;
+}
+
+ */
+
+
+
 /***************************************************************** */
 extern "C++"
 void reg_getEntropies(nifti_image *targetImage,

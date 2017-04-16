@@ -44,7 +44,7 @@ texture<float, 3, cudaReadModeElementType> secondTargetImageTexture;
 texture<float, 1, cudaReadModeElementType> secondResultImageTexture;
 texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 
- __global__ void reg_getJointHistogram_kernel(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries)
+__global__ void reg_getJointHistogram_kernel1(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries)
 {
 	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
 	extern __shared__ int sdata[];
@@ -106,6 +106,279 @@ texture<float4, 1, cudaReadModeElementType> secondResultImageGradientTexture;
 		}
 	return;
 } 
+ __global__ void reg_getJointHistogram_kernel2(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries)
+{
+	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
+	extern __shared__ int sdata[];
+	unsigned int td = threadIdx.x;
+	unsigned int value=0;
+	
+	
+	if (tid < targetVoxelNumber)
+	{
+		//unsigned int td = threadIdx.x;
+	  float target_values=targetImage[tid];
+	  
+	  float result_values;
+	  bool valid_values = true;
+	  __shared__ int added_value;
+	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
+					{
+                    valid_values = false;
+                    }
+	 if (valid_values)
+	 {	 result_values=resultImage[tid];
+		
+		if (result_values <  0 ||
+                    result_values >= total_target_entries ||
+                    result_values != result_values) {
+                    valid_values = false;
+					
+					
+              }
+		 }
+	  if (valid_values)
+	  {		
+			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
+			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
+			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
+			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
+			value=1;
+		  //atomicAdd(&added_value,1);
+		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
+		  
+	  }
+	  //sdata[td]=value;
+
+	}
+		  	sdata[td]=value;
+			//printf("sdata[td]=%d\n",value);
+			__syncthreads();
+			for(unsigned int s=1; s < blockDim.x; s *= 2) 
+			{
+				int index = 2 * s * td;
+			if (index < blockDim.x )
+			{
+				sdata[index] += sdata[index + s];
+			}
+				__syncthreads();
+		    }
+		if (td == 0) 
+		{
+		  c_voxel_number[blockIdx.x]=sdata[0];
+		  //printf("zero=%d",td);
+		}
+	return;
+} 
+
+__global__ void reg_getJointHistogram_kernel3(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries)
+{
+	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
+	extern __shared__ int sdata[];
+	unsigned int td = threadIdx.x;
+	unsigned int value=0;
+	
+	
+	if (tid < targetVoxelNumber)
+	{
+		//unsigned int td = threadIdx.x;
+	  float target_values=targetImage[tid];
+	  
+	  float result_values;
+	  bool valid_values = true;
+	  __shared__ int added_value;
+	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
+					{
+                    valid_values = false;
+                    }
+	 if (valid_values)
+	 {	 result_values=resultImage[tid];
+		
+		if (result_values <  0 ||
+                    result_values >= total_target_entries ||
+                    result_values != result_values) {
+                    valid_values = false;
+					
+					
+              }
+		 }
+	  if (valid_values)
+	  {		
+			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
+			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
+			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
+			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
+			value=1;
+		  //atomicAdd(&added_value,1);
+		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
+		  
+	  }
+	  //sdata[td]=value;
+
+	}
+		  	sdata[td]=value;
+			//printf("sdata[td]=%d\n",value);
+			__syncthreads();
+			for (unsigned int s=blockDim.x/2; s>0; s>>=1)
+				{
+				if (td < s) {
+					sdata[td] += sdata[td + s];
+							}
+					__syncthreads();
+				}
+		if (td == 0) 
+		{
+		  c_voxel_number[blockIdx.x]=sdata[0];
+		  //printf("zero=%d",td);
+		}
+	return;
+} 
+
+__global__ void reg_getJointHistogram_kernel4(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries)
+{
+	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
+	extern __shared__ int sdata[];
+	unsigned int td = threadIdx.x;
+	unsigned int value=0;
+	
+	
+	if (tid < targetVoxelNumber)
+	{
+		//unsigned int td = threadIdx.x;
+	  float target_values=targetImage[tid];
+	  
+	  float result_values;
+	  bool valid_values = true;
+	  __shared__ int added_value;
+	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
+					{
+                    valid_values = false;
+                    }
+	 if (valid_values)
+	 {	 result_values=resultImage[tid];
+		
+		if (result_values <  0 ||
+                    result_values >= total_target_entries ||
+                    result_values != result_values) {
+                    valid_values = false;
+					
+					
+              }
+		 }
+	  if (valid_values)
+	  {		
+			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
+			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
+			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
+			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
+			value=1;
+		  //atomicAdd(&added_value,1);
+		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
+		  
+	  }
+	 
+
+	}
+		  	sdata[td]=value;
+			//printf("sdata[td]=%d\n",value);
+			__syncthreads();
+		for (unsigned int s=blockDim.x/2; s>32; s>>=1)
+		{
+		if (td < s)
+		{sdata[td] += sdata[td + s];
+			
+		}
+		__syncthreads();
+		}
+		if (td < 32)
+			{
+				sdata[td] += sdata[td + 32];__syncthreads();
+				sdata[td] += sdata[td + 16];__syncthreads();
+				sdata[td] += sdata[td + 8];__syncthreads();
+				sdata[td] += sdata[td + 4];__syncthreads();
+				sdata[td] += sdata[td + 2];__syncthreads();
+				sdata[td] += sdata[td + 1];__syncthreads();
+			}
+			//__syncthreads();
+				if (td == 0) 
+		{
+		  c_voxel_number[blockIdx.x]=sdata[0];
+		  //printf("zero=%d",td);
+		}
+	return;
+} 
+//template <unsigned int blockSize>
+__global__ void reg_getJointHistogram_kernel5(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries,int blockSize)
+{
+	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
+	extern __shared__ int sdata[];
+	unsigned int td = threadIdx.x;
+	unsigned int value=0;
+	
+	
+	if (tid < targetVoxelNumber)
+	{
+		//unsigned int td = threadIdx.x;
+	  float target_values=targetImage[tid];
+	  
+	  float result_values;
+	  bool valid_values = true;
+	  __shared__ int added_value;
+	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
+					{
+                    valid_values = false;
+                    }
+	 if (valid_values)
+	 {	 result_values=resultImage[tid];
+		
+		if (result_values <  0 ||
+                    result_values >= total_target_entries ||
+                    result_values != result_values) {
+                    valid_values = false;
+					
+					
+              }
+		 }
+	  if (valid_values)
+	  {		
+			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
+			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
+			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
+			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
+			value=1;
+		  //atomicAdd(&added_value,1);
+		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
+		  
+	  }
+	 
+
+	}
+		  	sdata[td]=value;
+			//printf("sdata[td]=%d\n",value);
+			__syncthreads();
+    if (blockSize >= 512) { if (td < 256) { sdata[td] += sdata[td + 256]; } __syncthreads(); }
+    if (blockSize >= 256) { if (td < 128) { sdata[td] += sdata[td + 128]; } __syncthreads(); }
+    if (blockSize >= 128) { if (td <  64) { sdata[td] += sdata[td +  64]; } __syncthreads(); }
+		if (td < 32)
+			{
+				sdata[td] += sdata[td + 32];__syncthreads();
+				sdata[td] += sdata[td + 16];__syncthreads();
+				sdata[td] += sdata[td + 8];__syncthreads();
+				sdata[td] += sdata[td + 4];__syncthreads();
+				sdata[td] += sdata[td + 2];__syncthreads();
+				sdata[td] += sdata[td + 1];__syncthreads();
+			}
+			//__syncthreads();
+				if (td == 0) 
+		{
+		  c_voxel_number[blockIdx.x]=sdata[0];
+		  //printf("zero=%d",td);
+		}
+	return;
+} 
+
+
+
 __device__ float GetBasisSplineValue(float x)
 {
     x=fabsf(x);
