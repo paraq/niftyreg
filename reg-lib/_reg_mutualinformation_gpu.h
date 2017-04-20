@@ -66,7 +66,8 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
                       double *logJointHistogram,
                       double *entropies,
                       int *mask,
-                      bool approx);
+                      bool approx,
+					  float *c_targetImage);
 					  
 												
 

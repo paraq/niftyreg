@@ -91,7 +91,7 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->bestControlPointPosition=NULL;
     this->probaJointHistogram=NULL;
     this->logJointHistogram=NULL;
-
+	//this->targetimage_gpu=NULL;
     this->interpolation=1;
 
     this->xOptimisation=true;
@@ -523,6 +523,21 @@ void reg_f3d<T>::AllocateWarped()
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+
+template <class T>
+void reg_f3d<T>::AllocateandcpyTargetImage()
+{
+
+    return;
+}
+	
+template <class T>
+void reg_f3d<T>::Cleargputargetimage()
+{
+
+    return;
+}	
+
 template <class T>
 void reg_f3d<T>::ClearWarped()
 {
@@ -1914,6 +1929,9 @@ void reg_f3d<T>::Run_f3d()
         this->AllocateWarpedGradient();
         this->AllocateVoxelBasedMeasureGradient();
         this->AllocateJointHistogram();
+		
+		//ALLOCATE AND COPY TARGET IMAGE ON GPU
+		this->AllocateandcpyTargetImage();
 
         // The grid is refined if necessary
         this->AllocateCurrentInputImage();
@@ -2134,6 +2152,8 @@ void reg_f3d<T>::Run_f3d()
         this->ClearConjugateGradientVariables();
         this->ClearBestControlPointArray();
         this->ClearJointHistogram();
+		this->Cleargputargetimage();
+		
         if(this->usePyramid){
             nifti_image_free(this->referencePyramid[this->currentLevel]);this->referencePyramid[this->currentLevel]=NULL;
             nifti_image_free(this->floatingPyramid[this->currentLevel]);this->floatingPyramid[this->currentLevel]=NULL;

@@ -58,7 +58,7 @@ __global__ void reg_getJointHistogram_kernel1(float *targetImage, float *resultI
 	  
 	  float result_values;
 	  bool valid_values = true;
-	  __shared__ int added_value;
+	  //__shared__ int added_value;
 	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
 					{
                     valid_values = false;
@@ -121,7 +121,7 @@ __global__ void reg_getJointHistogram_kernel1(float *targetImage, float *resultI
 	  
 	  float result_values;
 	  bool valid_values = true;
-	  __shared__ int added_value;
+	  //__shared__ int added_value;
 	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
 					{
                     valid_values = false;
@@ -186,7 +186,7 @@ __global__ void reg_getJointHistogram_kernel3(float *targetImage, float *resultI
 	  
 	  float result_values;
 	  bool valid_values = true;
-	  __shared__ int added_value;
+	  //__shared__ int added_value;
 	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
 					{
                     valid_values = false;
@@ -249,7 +249,7 @@ __global__ void reg_getJointHistogram_kernel4(float *targetImage, float *resultI
 	  
 	  float result_values;
 	  bool valid_values = true;
-	  __shared__ int added_value;
+	  //__shared__ int added_value;
 	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
 					{
                     valid_values = false;
@@ -308,22 +308,31 @@ __global__ void reg_getJointHistogram_kernel4(float *targetImage, float *resultI
 	return;
 } 
 //template <unsigned int blockSize>
-__global__ void reg_getJointHistogram_kernel5(float *targetImage, float *resultImage,int *probaJointHistogram,int *c_voxel_number,int targetVoxelNumber,int total_target_entries,int blockSize)
+__global__ void reg_getJointHistogram_kernel5(float *targetImage, float *resultImage,int *probaJointHistogram,int targetVoxelNumber,int total_target_entries,int num_histogram_entries)
 {
 	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
-	extern __shared__ int sdata[];
-	unsigned int td = threadIdx.x;
-	unsigned int value=0;
-	
-	
+	//extern __shared__ int sdata[];
+	extern __shared__ int local_hist[];
+	//unsigned int td = threadIdx.x;
+	//unsigned int value=0;
+	int hist_index=0;
+	for ( int i = threadIdx.x; i < num_histogram_entries; i += blockDim.x ) {
+			local_hist[i] = 0;
+		}
 	if (tid < targetVoxelNumber)
 	{
 		//unsigned int td = threadIdx.x;
+/* 		if (tid < num_histogram_entries )
+		{
+			local_hist[tid] = 0;
+		} */
+		
+		
 	  float target_values=targetImage[tid];
 	  
 	  float result_values;
 	  bool valid_values = true;
-	  __shared__ int added_value;
+	  //__shared__ int added_value;
 	                if (target_values < 0 || target_values >= total_target_entries || target_values != target_values) 
 					{
                     valid_values = false;
@@ -344,38 +353,26 @@ __global__ void reg_getJointHistogram_kernel5(float *targetImage, float *resultI
 			//atomicAdd(&probaJointHistogram[int(round(target_values))+int(round(result_values))*total_target_entries],1);
 			//atomicAdd(&probaJointHistogram[(__float2int_rd(target_values))+(__float2int_rd(result_values))*68],1); // lot diff
 			//atomicAdd(&probaJointHistogram[(__float2int_ru(target_values))+(__float2int_ru(result_values))*total_target_entries],1);
-			atomicAdd(&probaJointHistogram[(__float2int_rn(target_values))+(__float2int_rn(result_values))*total_target_entries],1);
-			value=1;
+			hist_index=__float2int_rn(target_values)+__float2int_rn(result_values)*total_target_entries;
+			atomicAdd(&local_hist[hist_index],1);
+			//value=1;
 		  //atomicAdd(&added_value,1);
 		  //printf("[kernel debug] index=%d value=%d\n",tid,__float2int_ru(round(target_values))+__float2int_ru(round(result_values)));
 		  
 	  }
-	 
+/* 	  __syncthreads();
+					if (tid < num_histogram_entries )
+		{
+			atomicAdd(&probaJointHistogram[tid],local_hist[tid]);
+		} */
 
 	}
-		  	sdata[td]=value;
-			//printf("sdata[td]=%d\n",value);
-			__syncthreads();
-    if (blockSize >= 512) { if (td < 256) { sdata[td] += sdata[td + 256]; } __syncthreads(); }
-    if (blockSize >= 256) { if (td < 128) { sdata[td] += sdata[td + 128]; } __syncthreads(); }
-    if (blockSize >= 128) { if (td <  64) { sdata[td] += sdata[td +  64]; } __syncthreads(); }
-		if (td < 32)
-			{
-				sdata[td] += sdata[td + 32];__syncthreads();
-				sdata[td] += sdata[td + 16];__syncthreads();
-				sdata[td] += sdata[td + 8];__syncthreads();
-				sdata[td] += sdata[td + 4];__syncthreads();
-				sdata[td] += sdata[td + 2];__syncthreads();
-				sdata[td] += sdata[td + 1];__syncthreads();
-			}
-			//__syncthreads();
-				if (td == 0) 
-		{
-		  c_voxel_number[blockIdx.x]=sdata[0];
-		  //printf("zero=%d",td);
-		}
+		__syncthreads();
+		for ( int i = threadIdx.x; i < num_histogram_entries; i += blockDim.x ) {
+			atomicAdd(&probaJointHistogram[i],local_hist[i]);
+		}  	
 	return;
-} 
+}  
 
 
 

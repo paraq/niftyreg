@@ -93,6 +93,8 @@ class reg_f3d
     bool yOptimisation;
     bool zOptimisation;
     bool gridRefinement;
+	
+	//float *targetimage_gpu;
 
     bool additive_mc_nmi; // Additive multi channel NMI
 
@@ -116,6 +118,9 @@ class reg_f3d
     virtual void ClearJointHistogram();
     virtual void AllocateCurrentInputImage();
     virtual void ClearCurrentInputImage();
+	
+	virtual	void AllocateandcpyTargetImage();
+	virtual void Cleargputargetimage();
 
     virtual void SaveCurrentControlPoint();
     virtual void RestoreCurrentControlPoint();

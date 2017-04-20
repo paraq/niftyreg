@@ -33,7 +33,7 @@ reg_f3d_gpu<T>::reg_f3d_gpu(int refTimePoint,int floTimePoint)
     this->conjugateH_gpu=NULL;
     this->bestControlPointPosition_gpu=NULL;
     this->logJointHistogram_gpu=NULL;
-
+	this->targetimage_gpu=NULL;
     this->currentReference2_gpu=NULL;
     this->currentFloating2_gpu=NULL;
     this->warped2_gpu=NULL;
@@ -130,6 +130,8 @@ void reg_f3d_gpu<T>::AllocateWarped()
         printf("[NiftyReg ERROR] reg_f3d_gpu does not handle more than 2 time points in the floating image.\n");
         exit(1);
     }
+
+	
 #ifndef NDEBUG
     printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateWarped done.\n");
 #endif
@@ -153,6 +155,8 @@ void reg_f3d_gpu<T>::ClearWarped()
         cudaCommon_free<float>(&this->warped2_gpu);
         this->warped2_gpu=NULL;
     }
+	
+	
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
@@ -375,6 +379,43 @@ void reg_f3d_gpu<T>::AllocateJointHistogram()
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template <class T>
+void reg_f3d_gpu<T>::AllocateandcpyTargetImage()
+{
+	int targetVoxelNumber = this->currentReference->nx * this->currentReference->ny * this->currentReference->nz;
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateTargetImage called.\n");
+#endif
+
+    NR_CUDA_SAFE_CALL(cudaMalloc(&this->targetimage_gpu,targetVoxelNumber*sizeof(float)));
+	NR_CUDA_SAFE_CALL((cudaMemcpy(this->targetimage_gpu,this->currentReference->data,targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateTargetImage done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
+void reg_f3d_gpu<T>::Cleargputargetimage()
+{
+
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::Cleargputargetimage called.\n");
+#endif
+	 if(this->targetimage_gpu!=NULL){
+		NR_CUDA_SAFE_CALL(cudaFree(this->targetimage_gpu));
+		this->targetimage_gpu=NULL;
+	 }
+		
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::Cleargputargetimage done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
 void reg_f3d_gpu<T>::ClearJointHistogram()
 {
     reg_f3d<T>::ClearJointHistogram();
@@ -566,7 +607,8 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
                          this->logJointHistogram,
                          this->entropies,
                          this->currentMask,
-                         this->approxParzenWindow);
+                         this->approxParzenWindow,
+						 this->targetimage_gpu);
 
     }
 	

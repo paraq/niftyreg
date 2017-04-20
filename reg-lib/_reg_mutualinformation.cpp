@@ -239,7 +239,7 @@ void reg_getEntropies1(nifti_image *targetImage,
             added_value=0.;
             valid_values = true;
             target_flat_index = 0;
-
+			//printf("[NiftyReg Debug parag] index=%d target_values= %f result_values=%f\n",index,targetImagePtr[index],resultImagePtr[index]);
             // Get the target values
             for (i = 0; i < num_target_volumes; ++i) {
                 target_values[i] = targetImagePtr[index+i*targetVoxelNumber];
@@ -271,7 +271,8 @@ void reg_getEntropies1(nifti_image *targetImage,
 #ifdef _OPENMP
                     tempHistogram[tid][static_cast<int>(round(target_flat_index)) +
                             (static_cast<int>(round(result_flat_index)) * total_target_entries)]++;
-#else
+#else				
+					printf("[NiftyReg Debug parag] index=%d target_values= %f result_values=%f\n",index,targetImagePtr[index],resultImagePtr[index]);
                     probaJointHistogram[static_cast<int>(round(target_flat_index)) +
                             (static_cast<int>(round(result_flat_index)) * total_target_entries)]++;
 #endif

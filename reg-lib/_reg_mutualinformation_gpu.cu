@@ -119,17 +119,6 @@ void traverse_and_sum_axes(int axes, double *histogram, double *&sums,
 
 
 
-
-/* 	probaJointHistogram = reg_getEntropies_gpu(targetImage,
-                         resultImage,
-                         targetVoxelNumber,
-                         resultVoxelNumber,
-                         c_probaJointHistogram_int); */
-						 
-/* 		probaJointHistogram=reg_getEntropies_gpu(targetImage,
-													resultImage,
-												num_histogram_entries,
-													targetVoxelNumber,resultVoxelNumber) */;
 //new gpu getentropy function
 void reg_getEntropies_gpu(nifti_image *targetImage,
                       nifti_image *resultImage,
@@ -139,21 +128,22 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
                       double *logJointHistogram,
                       double *entropies,
                       int *mask,
-                      bool approx)
+                      bool approx,
+					  float *c_targetImage)
 {	
 
   
 	//double *c_targetImage,*c_resultImage;
-	float *c_targetImage = static_cast<float *>(targetImage->data);
+	//float *c_targetImage = static_cast<float *>(targetImage->data);
 	float *c_resultImage = static_cast<float *>(resultImage->data);
 	
-   struct timeval t1, t2;
-    double elapsedTime;
+	struct timeval t1, t2,t3,t4,t5,t6;
+    double elapsedTime,elapsedTime1,elapsedTime2;
 	
 	int *c_probaJointHistogram_int,*c_probaJointHistogram,*c_voxel_number,*voxel_number_blk;
 	int num_target_volumes = targetImage->nt;
     int num_result_volumes = resultImage->nt;
-	int i, j, index;
+	int i, j,nstreams=4;
 	int voxel_number=0;
 	if(num_target_volumes>1 || num_result_volumes>1) approx=true;
 	
@@ -210,7 +200,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	memset(voxel_number_blk, 0, reduce_size * sizeof(int));
     memset(probaJointHistogram, 0, num_histogram_entries * sizeof(double));
 	memset(logJointHistogram, 0, num_histogram_entries * sizeof(double));
-	//fprintf(stderr,"[NiftyReg Debug parag] Error at here 2 \n");
+
 	
     // Space for storing the marginal entropies.
 /* 				for (i=0;i<reduce_size;i++)
@@ -219,65 +209,84 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 		
 	}
 	 */
+	 
+	 // allocate and initialize an array of stream handles
+    cudaStream_t *streams = (cudaStream_t *) malloc(nstreams * sizeof(cudaStream_t));
+
+    for (i = 0; i < nstreams; i++)
+    {
+        NR_CUDA_SAFE_CALL(cudaStreamCreate(&(streams[i])));
+    }
+	 
 	//allocate memory 
- 	//NR_CUDA_SAFE_CALL(cudaMalloc(&c_targetVoxelNumber,sizeof(int)));
+ 	
 	 gettimeofday(&t1, NULL);
 	NR_CUDA_SAFE_CALL(cudaMalloc(&c_probaJointHistogram,num_histogram_entries * sizeof(int)));
-	NR_CUDA_SAFE_CALL(cudaMalloc(&c_targetImage,targetVoxelNumber * sizeof(float)));
+	//NR_CUDA_SAFE_CALL(cudaMalloc(&c_targetImage,targetVoxelNumber * sizeof(float)));
 	NR_CUDA_SAFE_CALL(cudaMalloc(&c_resultImage,resultVoxelNumber * sizeof(float)));
 	NR_CUDA_SAFE_CALL(cudaMalloc(&c_voxel_number,reduce_size * sizeof(int)));
-	//NR_CUDA_SAFE_CALL(cudaMemset(c_probaJointHistogram,0,num_histogram_entries * sizeof(int)));
-	
 	
 
-	NR_CUDA_SAFE_CALL((cudaMemcpy(c_targetImage, targetImage->data, targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
-	NR_CUDA_SAFE_CALL((cudaMemcpy(c_resultImage, resultImage->data, resultVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
- 	NR_CUDA_SAFE_CALL((cudaMemcpy(c_probaJointHistogram, c_probaJointHistogram_int, num_histogram_entries * sizeof(int), cudaMemcpyHostToDevice)));
-	NR_CUDA_SAFE_CALL((cudaMemcpy(c_voxel_number, voxel_number_blk, reduce_size * sizeof(int), cudaMemcpyHostToDevice)));
+/* 	NR_CUDA_SAFE_CALL(cudaMallocHost(&c_probaJointHistogram,num_histogram_entries * sizeof(int)));
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&c_targetImage,targetVoxelNumber * sizeof(float)));
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&c_resultImage,resultVoxelNumber * sizeof(float)));
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&c_voxel_number,reduce_size * sizeof(int))); */
 	
+	gettimeofday(&t5, NULL);
+	NR_CUDA_SAFE_CALL((cudaMemcpy(c_probaJointHistogram, c_probaJointHistogram_int, num_histogram_entries * sizeof(int), cudaMemcpyHostToDevice)));
+	//NR_CUDA_SAFE_CALL((cudaMemcpy(c_targetImage, targetImage->data, targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
+	NR_CUDA_SAFE_CALL((cudaMemcpy(c_resultImage, resultImage->data, resultVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
+	NR_CUDA_SAFE_CALL((cudaMemcpy(c_voxel_number, voxel_number_blk, reduce_size * sizeof(int), cudaMemcpyHostToDevice)));
+	gettimeofday(&t6, NULL);
 	
 	//NR_CUDA_SAFE_CALL((cudaMemcpy(c_targetVoxelNumber, &targetVoxelNumber, sizeof(int), cudaMemcpyHostToDevice)));
-	dim3 G1(targetVoxelNumber/nthreads,1,1);
+	dim3 G1(ceil(targetVoxelNumber/nthreads),1,1);
 	dim3 B1(nthreads,1,1);
 	
 	int shared_size = nthreads* sizeof(int);
-	//gettimeofday(&t1, NULL);
+	shared_size += num_histogram_entries * sizeof(int);
+	gettimeofday(&t3, NULL);
 	//reg_getJointHistogram_kernel1<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,c_voxel_number,targetVoxelNumber,total_target_entries);
 	//reg_getJointHistogram_kernel2<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,c_voxel_number,targetVoxelNumber,total_target_entries);
 	//reg_getJointHistogram_kernel3<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,c_voxel_number,targetVoxelNumber,total_target_entries);
 	reg_getJointHistogram_kernel4<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,c_voxel_number,targetVoxelNumber,total_target_entries);
-	//reg_getJointHistogram_kernel5<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,c_voxel_number,targetVoxelNumber,total_target_entries,nthreads);
+	
+	//reg_getJointHistogram_kernel5<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,targetVoxelNumber,total_target_entries,num_histogram_entries);
 	NR_CUDA_CHECK_KERNEL(G1,B1);
-	  //gettimeofday(&t2, NULL);
-	//cudaDeviceSynchronize();
-	//fprintf(stderr,"[NiftyReg Debug parag] Error at here 4 \n");
-	//fprintf(stderr,"[NiftyReg Debug parag] Error at here 5 \n");
+	gettimeofday(&t4, NULL);
+
 	NR_CUDA_SAFE_CALL((cudaMemcpy(c_probaJointHistogram_int, c_probaJointHistogram, num_histogram_entries * sizeof(int), cudaMemcpyDeviceToHost)));
 	NR_CUDA_SAFE_CALL((cudaMemcpy(voxel_number_blk, c_voxel_number, reduce_size * sizeof(int), cudaMemcpyDeviceToHost)));
-	 	// gettimeofday(&t2, NULL);    
-
-
+	   
 	
 		for (i=0;i<num_histogram_entries;i++)
 	{
 		//printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %d\n",i,c_probaJointHistogram_int[i]);
 		probaJointHistogram[i]=(double)c_probaJointHistogram_int[i];
-		
+		//voxel_number+=c_probaJointHistogram_int[i];
 	}
 			for (i=0;i<reduce_size;i++)
 	{
-		//printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %d\n",i,voxel_number_blk[i]);
+		
 		voxel_number+=voxel_number_blk[i];
 		
 	}	
 	gettimeofday(&t2, NULL);
 	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
     elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
-/* 	printf("[NiftyReg F3D] joint hist filing in GPU %f  sec\n", elapsedTime );
-	printf("[NiftyReg Debug parag] number=%d\n",voxel_number); */
-	cudaFree(c_targetImage);
+	elapsedTime1 = (t4.tv_sec - t3.tv_sec) * 1000.0;      // sec to ms
+    elapsedTime1 += (t4.tv_usec - t3.tv_usec) / 1000.0;
+	elapsedTime2 = (t6.tv_sec - t5.tv_sec) * 1000.0;      // sec to ms
+    elapsedTime2 += (t6.tv_usec - t5.tv_usec) / 1000.0;
+	
+	//printf("[NiftyReg F3D] Total joint hist filing in GPU %f  and kernel time=%f copyHtoD=%f msec\n", elapsedTime,elapsedTime1,elapsedTime2 );
+	//printf("[NiftyReg Debug parag] size=%lu\n",targetVoxelNumber * sizeof(float));
+	//cudaFree(c_targetImage);
 	cudaFree(c_resultImage);
 	cudaFree(c_probaJointHistogram);
+/* 	cudaFreeHost(c_targetImage);
+	cudaFreeHost(c_resultImage);
+	cudaFreeHost(c_probaJointHistogram); */
 	free(c_probaJointHistogram_int);
 	free(voxel_number_blk);
 	//fprintf(stderr,"[NiftyReg ERROR] The GPU implementation of new entropy calculation \n");
@@ -410,8 +419,8 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 /* 	printf("[NiftyReg Debug parag] entropies[0]=%f\n",entropies[0]);
 	printf("[NiftyReg Debug parag] entropies[1]=%f\n",entropies[1]);
 	printf("[NiftyReg Debug parag] entropies[2]=%f\n",entropies[2]);
-	printf("[NiftyReg Debug parag] entropies[3]=%f\n",entropies[3]); */
-	//exit(1);
+	printf("[NiftyReg Debug parag] entropies[3]=%f\n",entropies[3]);
+	exit(0); */
     return;
 
 						  
