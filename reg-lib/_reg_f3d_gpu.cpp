@@ -608,7 +608,8 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
                          this->entropies,
                          this->currentMask,
                          this->approxParzenWindow,
-						 this->targetimage_gpu);
+						 this->targetimage_gpu,
+						 this->warped_gpu);
 
     }
 	

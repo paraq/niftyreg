@@ -129,13 +129,14 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
                       double *entropies,
                       int *mask,
                       bool approx,
-					  float *c_targetImage)
+					  float *c_targetImage,
+					  float *c_resultImage)
 {	
 
   
 	//double *c_targetImage,*c_resultImage;
 	//float *c_targetImage = static_cast<float *>(targetImage->data);
-	float *c_resultImage = static_cast<float *>(resultImage->data);
+	//float *c_resultImage = static_cast<float *>(resultImage->data);
 	
 	struct timeval t1, t2,t3,t4,t5,t6;
     double elapsedTime,elapsedTime1,elapsedTime2;
@@ -143,12 +144,12 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	int *c_probaJointHistogram_int,*c_probaJointHistogram,*c_voxel_number,*voxel_number_blk;
 	int num_target_volumes = targetImage->nt;
     int num_result_volumes = resultImage->nt;
-	int i, j,nstreams=4;
+	int i, j;
 	int voxel_number=0;
 	if(num_target_volumes>1 || num_result_volumes>1) approx=true;
 	
     int targetVoxelNumber = targetImage->nx * targetImage->ny * targetImage->nz;
-	int resultVoxelNumber = resultImage->nx * resultImage->ny * resultImage->nz;
+	//int resultVoxelNumber = resultImage->nx * resultImage->ny * resultImage->nz;
 	 //fprintf(stderr,"[NiftyReg Debug parag] targetVoxelNumber= %d\n",resultVoxelNumber); 
 /*     DTYPE *targetImagePtr = static_cast<DTYPE *>(targetImage->data);
     DTYPE *resultImagePtr = static_cast<DTYPE *>(resultImage->data); */
@@ -211,19 +212,13 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	 */
 	 
 	 // allocate and initialize an array of stream handles
-    cudaStream_t *streams = (cudaStream_t *) malloc(nstreams * sizeof(cudaStream_t));
-
-    for (i = 0; i < nstreams; i++)
-    {
-        NR_CUDA_SAFE_CALL(cudaStreamCreate(&(streams[i])));
-    }
-	 
+ 
 	//allocate memory 
  	
 	 gettimeofday(&t1, NULL);
 	NR_CUDA_SAFE_CALL(cudaMalloc(&c_probaJointHistogram,num_histogram_entries * sizeof(int)));
 	//NR_CUDA_SAFE_CALL(cudaMalloc(&c_targetImage,targetVoxelNumber * sizeof(float)));
-	NR_CUDA_SAFE_CALL(cudaMalloc(&c_resultImage,resultVoxelNumber * sizeof(float)));
+	//NR_CUDA_SAFE_CALL(cudaMalloc(&c_resultImage,resultVoxelNumber * sizeof(float)));
 	NR_CUDA_SAFE_CALL(cudaMalloc(&c_voxel_number,reduce_size * sizeof(int)));
 	
 
@@ -235,7 +230,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	gettimeofday(&t5, NULL);
 	NR_CUDA_SAFE_CALL((cudaMemcpy(c_probaJointHistogram, c_probaJointHistogram_int, num_histogram_entries * sizeof(int), cudaMemcpyHostToDevice)));
 	//NR_CUDA_SAFE_CALL((cudaMemcpy(c_targetImage, targetImage->data, targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
-	NR_CUDA_SAFE_CALL((cudaMemcpy(c_resultImage, resultImage->data, resultVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
+	//NR_CUDA_SAFE_CALL((cudaMemcpy(c_resultImage, resultImage->data, resultVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
 	NR_CUDA_SAFE_CALL((cudaMemcpy(c_voxel_number, voxel_number_blk, reduce_size * sizeof(int), cudaMemcpyHostToDevice)));
 	gettimeofday(&t6, NULL);
 	
@@ -252,6 +247,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	reg_getJointHistogram_kernel4<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,c_voxel_number,targetVoxelNumber,total_target_entries);
 	
 	//reg_getJointHistogram_kernel5<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,targetVoxelNumber,total_target_entries,num_histogram_entries);
+	//reg_getJointHistogram_kernel6<<< G1,B1,shared_size>>>(c_targetImage,c_resultImage,c_probaJointHistogram,targetVoxelNumber,total_target_entries,num_histogram_entries);
 	NR_CUDA_CHECK_KERNEL(G1,B1);
 	gettimeofday(&t4, NULL);
 
@@ -279,10 +275,10 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	elapsedTime2 = (t6.tv_sec - t5.tv_sec) * 1000.0;      // sec to ms
     elapsedTime2 += (t6.tv_usec - t5.tv_usec) / 1000.0;
 	
-	//printf("[NiftyReg F3D] Total joint hist filing in GPU %f  and kernel time=%f copyHtoD=%f msec\n", elapsedTime,elapsedTime1,elapsedTime2 );
+	printf("[NiftyReg F3D] Total joint hist filing in GPU=%f  and kernel time=%f copyHtoD=%f msec\n", elapsedTime,elapsedTime1,elapsedTime2 );
 	//printf("[NiftyReg Debug parag] size=%lu\n",targetVoxelNumber * sizeof(float));
 	//cudaFree(c_targetImage);
-	cudaFree(c_resultImage);
+	//cudaFree(c_resultImage);
 	cudaFree(c_probaJointHistogram);
 /* 	cudaFreeHost(c_targetImage);
 	cudaFreeHost(c_resultImage);

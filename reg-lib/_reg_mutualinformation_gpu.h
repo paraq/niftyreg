@@ -67,7 +67,8 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
                       double *entropies,
                       int *mask,
                       bool approx,
-					  float *c_targetImage);
+					  float *c_targetImage,
+					  float *c_resultImage);
 					  
 												
 
