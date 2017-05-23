@@ -1,2 +1,0 @@
-/usr/bin/ar qc lib_reg_mutualinformation.a  CMakeFiles/_reg_mutualinformation.dir/_reg_mutualinformation.cpp.o
-/usr/bin/ranlib lib_reg_mutualinformation.a

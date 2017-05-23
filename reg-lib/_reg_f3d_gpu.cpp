@@ -33,7 +33,7 @@ reg_f3d_gpu<T>::reg_f3d_gpu(int refTimePoint,int floTimePoint)
     this->conjugateH_gpu=NULL;
     this->bestControlPointPosition_gpu=NULL;
     this->logJointHistogram_gpu=NULL;
-
+	this->targetimage_gpu=NULL;
     this->currentReference2_gpu=NULL;
     this->currentFloating2_gpu=NULL;
     this->warped2_gpu=NULL;
@@ -130,6 +130,8 @@ void reg_f3d_gpu<T>::AllocateWarped()
         printf("[NiftyReg ERROR] reg_f3d_gpu does not handle more than 2 time points in the floating image.\n");
         exit(1);
     }
+
+	
 #ifndef NDEBUG
     printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateWarped done.\n");
 #endif
@@ -153,6 +155,8 @@ void reg_f3d_gpu<T>::ClearWarped()
         cudaCommon_free<float>(&this->warped2_gpu);
         this->warped2_gpu=NULL;
     }
+	
+	
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
@@ -375,6 +379,87 @@ void reg_f3d_gpu<T>::AllocateJointHistogram()
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template <class T>
+void reg_f3d_gpu<T>::AllocateandcpyTargetImage()
+{
+	int targetVoxelNumber = this->currentReference->nx * this->currentReference->ny * this->currentReference->nz;
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateTargetImage called.\n");
+#endif
+
+    NR_CUDA_SAFE_CALL(cudaMalloc(&this->targetimage_gpu,targetVoxelNumber*sizeof(float)));
+	NR_CUDA_SAFE_CALL((cudaMemcpy(this->targetimage_gpu,this->currentReference->data,targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateTargetImage done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
+void reg_f3d_gpu<T>::Cleargputargetimage()
+{
+
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::Cleargputargetimage called.\n");
+#endif
+	 if(this->targetimage_gpu!=NULL){
+		NR_CUDA_SAFE_CALL(cudaFree(this->targetimage_gpu));
+		this->targetimage_gpu=NULL;
+	 }
+		
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::Cleargputargetimage done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
+void reg_f3d_gpu<T>::randomsampling(int samples)
+{
+
+	int *targetMask_h; 
+	
+	
+   
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,samples*sizeof(int)))
+    
+   
+	//random sampling
+ 	for (int i=0;i<samples;i++)
+	{
+		targetMask_h[i]=rand()% this->activeVoxelNumber[this->currentLevel];
+	}
+
+	this->activeVoxelNumber[this->currentLevel]=samples;
+	
+    NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
+                                 this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+    NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
+                                 this->activeVoxelNumber[this->currentLevel]*sizeof(int),
+                                 cudaMemcpyHostToDevice))
+	//printf("mask is copied to gpu\n");
+    NR_CUDA_SAFE_CALL(cudaFreeHost(targetMask_h))
+#ifndef NDEBUG
+    //printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateRandomSampling done.\n");
+#endif
+    return;
+}
+
+
+template <class T>
+void reg_f3d_gpu<T>::clearrandomsampling()
+{
+    //reg_f3d<T>::ClearJointHistogram();
+    if(this->currentMask_gpu!=NULL){
+        cudaCommon_free<int>(&this->currentMask_gpu);
+        this->currentMask_gpu=NULL;
+    }
+    return;
+}
+
+
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
 void reg_f3d_gpu<T>::ClearJointHistogram()
 {
     reg_f3d<T>::ClearJointHistogram();
@@ -530,7 +615,7 @@ void reg_f3d_gpu<T>::WarpFloatingImage(int inter)
 template <class T>
 double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
 {
-    if(this->currentFloating->nt==1){
+/*     if(this->currentFloating->nt==1){
         if(cudaCommon_transferFromDeviceToNifti<float>
            (this->warped, &this->warped_gpu)){
             printf("[NiftyReg ERROR] Error when computing the similarity measure.\n");
@@ -543,11 +628,11 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
             printf("[NiftyReg ERROR] Error when computing the similarity measure.\n");
             exit(1);
         }
-    }
+    } */
 
     double measure=0.;
     if(this->currentFloating->nt==1){
-        reg_getEntropies(this->currentReference,
+   /*      reg_getEntropies(this->currentReference,
                          this->warped,
                          this->referenceBinNumber,
                          this->floatingBinNumber,
@@ -555,8 +640,25 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
                          this->logJointHistogram,
                          this->entropies,
                          this->currentMask,
-                         this->approxParzenWindow);
+                         this->approxParzenWindow); */
+
+	//calling new function					 
+		reg_getEntropies_gpu(this->currentReference,
+                         this->warped,
+                         this->referenceBinNumber,
+                         this->floatingBinNumber,
+                         this->probaJointHistogram,
+                         this->logJointHistogram,
+                         this->entropies,
+                         this->currentMask,
+                         this->approxParzenWindow,
+						 this->targetimage_gpu,
+						 this->warped_gpu,
+						 this->currentMask_gpu,
+						 this->activeVoxelNumber[this->currentLevel]);
+
     }
+	
     else if(this->currentFloating->nt==2){
         reg_getEntropies2x2_gpu(this->currentReference,
                                  this->warped,
@@ -830,18 +932,27 @@ void reg_f3d_gpu<T>::AllocateCurrentInputImage()
         exit(1);
     }
 
-    int *targetMask_h;
+	if(this->userandomsampling==false)
+	{
+    int *targetMask_h; 
+	
     NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
     int *targetMask_h_ptr = &targetMask_h[0];
     for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
         if( this->currentMask[i]!=-1) *targetMask_h_ptr++=i;
     }
+	
+
+	//printf("[NiftyReg DEBUG] activeVoxelNumber=%d nx*ny*nz=%d \n",this->activeVoxelNumber[this->currentLevel],this->currentReference->nx*this->currentReference->ny*this->currentReference->nz);
+	
     NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
     NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int),
                                  cudaMemcpyHostToDevice))
+	//printf("mask is copied to gpu\n");
     NR_CUDA_SAFE_CALL(cudaFreeHost(targetMask_h))
+	}
 #ifndef NDEBUG
     printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateCurrentInputImage done.\n");
 #endif
@@ -867,6 +978,7 @@ void reg_f3d_gpu<T>::ClearCurrentInputImage()
     this->currentFloating_gpu=NULL;
     NR_CUDA_SAFE_CALL(cudaFree(this->currentMask_gpu))
     this->currentMask_gpu=NULL;
+	//printf("mask is freed from gpu\n");
 
     if(this->currentReference->nt==2){
         cudaCommon_free(&this->currentReference2_gpu);

@@ -1,2 +1,0 @@
-/usr/bin/ar qc lib_reg_ssd.a  CMakeFiles/_reg_ssd.dir/_reg_ssd.cpp.o
-/usr/bin/ranlib lib_reg_ssd.a

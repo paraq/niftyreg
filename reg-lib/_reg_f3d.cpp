@@ -91,7 +91,7 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->bestControlPointPosition=NULL;
     this->probaJointHistogram=NULL;
     this->logJointHistogram=NULL;
-
+	//this->targetimage_gpu=NULL;
     this->interpolation=1;
 
     this->xOptimisation=true;
@@ -439,6 +439,14 @@ void reg_f3d<T>::DoNotPrintOutInformation()
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template<class T>
+void reg_f3d<T>::SetRandomSampling(bool flag,unsigned int s)
+{
+    this->userandomsampling = flag;
+	this->samples = s;
+    return;
+}
+
 //template<class T>
 //void reg_f3d<T>::SetThreadNumber(int t)
 //{
@@ -523,6 +531,40 @@ void reg_f3d<T>::AllocateWarped()
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+
+template <class T>
+void reg_f3d<T>::AllocateandcpyTargetImage()
+{
+
+    return;
+}
+	
+template <class T>
+void reg_f3d<T>::Cleargputargetimage()
+{
+
+    return;
+}
+
+
+template <class T>
+void reg_f3d<T>::randomsampling(int samples)
+{
+
+    return;
+}
+	
+
+template <class T>
+void reg_f3d<T>::clearrandomsampling()
+{
+
+    return;
+}
+
+
+	
+	
 template <class T>
 void reg_f3d<T>::ClearWarped()
 {
@@ -1858,6 +1900,10 @@ void reg_f3d<T>::DisplayCurrentLevelParameters()
             printf("[%s] \t* image spacing: %g x %g x %g mm\n", this->executableName,
                    this->controlPointGrid->dx, this->controlPointGrid->dy,
                    this->controlPointGrid->dz);
+			if(this->userandomsampling)
+			{
+				printf("[%s] Random sampling is used with %d samples\n", this->executableName,this->samples);
+			}
 #ifdef NDEBUG
         }
 #endif
@@ -1914,10 +1960,14 @@ void reg_f3d<T>::Run_f3d()
         this->AllocateWarpedGradient();
         this->AllocateVoxelBasedMeasureGradient();
         this->AllocateJointHistogram();
+		
+		//ALLOCATE AND COPY TARGET IMAGE ON GPU
+		this->AllocateandcpyTargetImage();
 
         // The grid is refined if necessary
         this->AllocateCurrentInputImage();
-
+		if(this->userandomsampling)this->randomsampling(this->samples);
+		
         // ALLOCATE IMAGES THAT DEPENDS ON THE CONTROL POINT IMAGE
         this->AllocateNodeBasedGradient();
         this->AllocateBestControlPointArray();
@@ -1927,12 +1977,12 @@ void reg_f3d<T>::Run_f3d()
         }
 
         this->DisplayCurrentLevelParameters();
-
+	
         T maxStepSize = (this->currentReference->dx>this->currentReference->dy)?this->currentReference->dx:this->currentReference->dy;
         maxStepSize = (this->currentReference->dz>maxStepSize)?this->currentReference->dz:maxStepSize;
         T currentSize = maxStepSize;
         T smallestSize = maxStepSize / 100.0f;
-
+		printf("maxStepsize=%f smallestSize=%f \n",maxStepSize,smallestSize);
         // Compute initial penalty terms
         double bestWJac = this->ComputeJacobianBasedPenaltyTerm(1); // 20 iterations
 
@@ -1953,7 +2003,8 @@ void reg_f3d<T>::Run_f3d()
         double bestIC = this->GetInverseConsistencyPenaltyTerm();
 
         // Evalulate the objective function value
-        double bestValue = bestWMeasure - bestWBE - bestWLE - bestWL2 - bestWJac - bestIC;
+        //double bestValue = bestWMeasure - bestWBE - bestWLE - bestWL2 - bestWJac - bestIC;
+		double bestValue = 0;
 
 #ifdef NDEBUG
         if(this->verbose){
@@ -1972,13 +2023,15 @@ void reg_f3d<T>::Run_f3d()
         }
 #endif
         // The initial objective function values are kept
-
+		if(this->userandomsampling) this->clearrandomsampling();
         this->currentIteration = 0;
         while(this->currentIteration<this->maxiterationNumber){
 
-            if(currentSize<=smallestSize)
-                break;
-
+          /*   if(currentSize<=smallestSize)
+                break; */
+			
+			if(this->userandomsampling) this->randomsampling(this->samples);
+			
             // Compute the gradient of the similarity measure
             if(this->similarityWeight>0){
                 this->WarpFloatingImage(this->interpolation);
@@ -2017,11 +2070,11 @@ void reg_f3d<T>::Run_f3d()
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize;
-            T addedStep=0.0f;
-            while(currentSize>smallestSize &&
+            currentSize=maxStepSize*0.85;
+            T addedStep=0.0f;//bestValue=0;
+            /* while(currentSize>smallestSize &&
                   lineIteration<12 &&
-                  this->currentIteration<this->maxiterationNumber){
+                  this->currentIteration<this->maxiterationNumber){ */
                 T currentLength = -currentSize/maxLength;
 #ifndef NDEBUG
                 printf("[NiftyReg DEBUG] Current added max step: %g\n", currentSize);
@@ -2046,8 +2099,8 @@ void reg_f3d<T>::Run_f3d()
                 double currentIC = this->GetInverseConsistencyPenaltyTerm();
 
                 double currentValue = currentWMeasure - currentWBE - currentWLE - currentWL2 - currentWJac - currentIC;
-
-                if(currentValue>bestValue){
+				
+                if(1){
                     bestValue = currentValue;
                     bestWMeasure = currentWMeasure;
                     bestWBE = currentWBE;
@@ -2056,8 +2109,8 @@ void reg_f3d<T>::Run_f3d()
                     bestWJac = currentWJac;
                     bestIC = currentIC;
                     addedStep += currentSize;
-                    currentSize*=1.1f;
-                    currentSize = (currentSize<maxStepSize)?currentSize:maxStepSize;
+                    //currentSize*=1.1f;
+                    //currentSize = (currentSize<maxStepSize)?currentSize:maxStepSize;
                     this->SaveCurrentControlPoint();
 #ifndef NDEBUG
                     printf("[NiftyReg DEBUG] [%i] objective function: %g = %g - %g - %g - %g - %g | KEPT\n",
@@ -2065,14 +2118,14 @@ void reg_f3d<T>::Run_f3d()
 #endif
                 }
                 else{
-                    currentSize*=0.5;
+                    //currentSize*=0.5;
 #ifndef NDEBUG
                     printf("[NiftyReg DEBUG] [%i] objective function: %g = %g - %g - %g - %g - %g | REJECTED\n",
                            this->currentIteration, currentValue, currentWMeasure, currentWBE, currentWLE, currentWL2,  currentWJac);
 #endif
                 }
-                lineIteration++;
-            }
+                //lineIteration++;
+				  //}
             this->RestoreCurrentControlPoint();
             currentSize=addedStep;
 #ifdef NDEBUG
@@ -2108,7 +2161,7 @@ void reg_f3d<T>::Run_f3d()
 		(*funcProgressCallback)(100.*iProgressStep/nProgressSteps, 
 					paramsProgressCallback);
 	      }
-	      break;
+	     // break;
 	    }
 	    else 
 	    {
@@ -2119,6 +2172,7 @@ void reg_f3d<T>::Run_f3d()
 					paramsProgressCallback);
 	      }
 	    }
+		if(this->userandomsampling) this->clearrandomsampling();
         }
 
         // FINAL FOLDING CORRECTION
@@ -2134,6 +2188,8 @@ void reg_f3d<T>::Run_f3d()
         this->ClearConjugateGradientVariables();
         this->ClearBestControlPointArray();
         this->ClearJointHistogram();
+		this->Cleargputargetimage();
+		
         if(this->usePyramid){
             nifti_image_free(this->referencePyramid[this->currentLevel]);this->referencePyramid[this->currentLevel]=NULL;
             nifti_image_free(this->floatingPyramid[this->currentLevel]);this->floatingPyramid[this->currentLevel]=NULL;

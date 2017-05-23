@@ -1,1 +1,0 @@
-/usr/bin/c++   -fopenmp -O2 -g -DNDEBUG  -rdynamic CMakeFiles/reg_test_mat44_operations.dir/reg_test_mat44_operations.cpp.o  -o reg_test_mat44_operations ../reg-lib/lib_reg_maths.a ../reg-io/nifti/libreg_nifti.a -lz 

@@ -213,6 +213,9 @@ int main(int argc, char **argv)
     bool yOptimisation=true;
     bool zOptimisation=true;
     bool gridRefinement=true;
+	
+	bool randomsampling=false;
+	unsigned int samples=0;
 
     bool useSym=false;
     bool additiveNMI = false;
@@ -424,6 +427,10 @@ int main(int argc, char **argv)
         }
         else if(strcmp(argv[i], "-nogr") ==0){
             gridRefinement=false;
+        }
+		else if(strcmp(argv[i], "-rdmsam") ==0){
+			randomsampling=true;
+            samples=atof(argv[++i]);
         }
 #ifdef _BUILD_NR_DEV
         else if(strcmp(argv[i], "-vel")==0 || strcmp(argv[i], "--vel")==0){
@@ -802,6 +809,8 @@ int main(int argc, char **argv)
         REG->NoGridRefinement();
 
     if (additiveNMI) REG->SetAdditiveMC();
+	
+	REG->SetRandomSampling(randomsampling,samples);
 
     // F3D SYM arguments
     if(floatingMaskImage!=NULL){
@@ -839,12 +848,13 @@ int main(int argc, char **argv)
     else{
 #endif
         REG->Run_f3d();
-
+				
         // Save the control point result
         nifti_image *outputControlPointGridImage = REG->GetControlPointPositionImage();
         if(outputControlPointGridName==NULL) outputControlPointGridName=(char *)"outputCPP.nii";
         memset(outputControlPointGridImage->descrip, 0, 80);
         strcpy (outputControlPointGridImage->descrip,"Control point position from NiftyReg (reg_f3d)");
+	
 #ifdef _BUILD_NR_DEV
         if(useVel)
             strcpy (outputControlPointGridImage->descrip,"Velocity field grid from NiftyReg (reg_f3d2)");
@@ -891,12 +901,16 @@ int main(int argc, char **argv)
         }
 
         // Save the warped image result(s)
+		
         nifti_image **outputWarpedImage=(nifti_image **)malloc(2*sizeof(nifti_image *));
         outputWarpedImage[0]=outputWarpedImage[1]=NULL;
+		
         outputWarpedImage = REG->GetWarpedImage();
+		
         if(outputWarpedName==NULL) outputWarpedName=(char *)"outputResult.nii";
         memset(outputWarpedImage[0]->descrip, 0, 80);
         strcpy (outputWarpedImage[0]->descrip,"Warped image using NiftyReg (reg_f3d)");
+		
         if(useSym){
             strcpy (outputWarpedImage[0]->descrip,"Warped image using NiftyReg (reg_f3d_sym)");
             strcpy (outputWarpedImage[1]->descrip,"Warped image using NiftyReg (reg_f3d_sym)");
@@ -947,8 +961,9 @@ int main(int argc, char **argv)
     cuCtxDetach(ctx);
 #endif
     // Erase the registration object
-    delete REG;
 
+    delete REG;
+	
     // Clean the allocated images
     if(referenceImage!=NULL) nifti_image_free(referenceImage);
     if(floatingImage!=NULL) nifti_image_free(floatingImage);
