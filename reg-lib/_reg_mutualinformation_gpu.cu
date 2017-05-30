@@ -143,7 +143,7 @@ void reg_getEntropies_gpu(nifti_image *targetImage,
 	struct timeval t1, t2,t3,t4,t5,t6;
     double elapsedTime,elapsedTime1,elapsedTime2;
 	
-	int *c_probaJointHistogram_int,*c_probaJointHistogram,*c_voxel_number,*voxel_number_blk,*t_mask;
+	int *c_probaJointHistogram_int,*c_probaJointHistogram,*c_voxel_number,*voxel_number_blk;
 	int num_target_volumes = targetImage->nt;
     int num_result_volumes = resultImage->nt;
 	int i, j;

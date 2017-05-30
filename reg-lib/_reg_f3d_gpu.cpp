@@ -421,16 +421,22 @@ void reg_f3d_gpu<T>::randomsampling(int samples)
 	
 	
    
-	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,samples*sizeof(int)))
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
     
    
 	//random sampling
- 	for (int i=0;i<samples;i++)
+/*  	for (int i=0;i<samples;i++)
 	{
 		targetMask_h[i]=rand()% this->activeVoxelNumber[this->currentLevel];
 	}
-
-	this->activeVoxelNumber[this->currentLevel]=samples;
+	 */
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+    int *targetMask_h_ptr = &targetMask_h[0];
+    for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
+        if( this->currentMask[i]!=-1) *targetMask_h_ptr++=i;
+    }
+	
+	//this->activeVoxelNumber[this->currentLevel]=samples;
 	
     NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
@@ -440,7 +446,7 @@ void reg_f3d_gpu<T>::randomsampling(int samples)
 	//printf("mask is copied to gpu\n");
     NR_CUDA_SAFE_CALL(cudaFreeHost(targetMask_h))
 #ifndef NDEBUG
-    //printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateRandomSampling done.\n");
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateRandomSampling done.\n");
 #endif
     return;
 }
@@ -454,6 +460,9 @@ void reg_f3d_gpu<T>::clearrandomsampling()
         cudaCommon_free<int>(&this->currentMask_gpu);
         this->currentMask_gpu=NULL;
     }
+	#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::clearrandomsampling done.\n");
+#endif
     return;
 }
 

@@ -71,6 +71,7 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->approxParzenWindow=true;
     this->currentIteration=0;
     this->usePyramid=true;
+	this->userandomsampling=false;
     //	this->threadNumber=1;
 
     this->initialised=false;
@@ -1966,7 +1967,7 @@ void reg_f3d<T>::Run_f3d()
 
         // The grid is refined if necessary
         this->AllocateCurrentInputImage();
-		if(this->userandomsampling)this->randomsampling(this->samples);
+		//if(this->userandomsampling)this->randomsampling(this->samples);
 		
         // ALLOCATE IMAGES THAT DEPENDS ON THE CONTROL POINT IMAGE
         this->AllocateNodeBasedGradient();
@@ -1984,7 +1985,7 @@ void reg_f3d<T>::Run_f3d()
         T smallestSize = maxStepSize / 100.0f;
 		printf("maxStepsize=%f smallestSize=%f \n",maxStepSize,smallestSize);
         // Compute initial penalty terms
-        double bestWJac = this->ComputeJacobianBasedPenaltyTerm(1); // 20 iterations
+        /* double bestWJac = this->ComputeJacobianBasedPenaltyTerm(1); // 20 iterations
 
         double bestWBE = this->ComputeBendingEnergyPenaltyTerm();
 
@@ -2000,13 +2001,19 @@ void reg_f3d<T>::Run_f3d()
         }
 
         // Compute the Inverse consistency penalty term if required
-        double bestIC = this->GetInverseConsistencyPenaltyTerm();
+        double bestIC = this->GetInverseConsistencyPenaltyTerm(); */
 
         // Evalulate the objective function value
         //double bestValue = bestWMeasure - bestWBE - bestWLE - bestWL2 - bestWJac - bestIC;
-		double bestValue = 0;
+		double bestValue = 0 ; 
+		double bestWMeasure = 0.0;
+		double bestWBE=0.0;
+		double bestWLE=0.0;
+		double bestWL2=0.0;
+		double bestIC=0.0;
+		double bestWJac=0.0;
 
-#ifdef NDEBUG
+/* #ifdef NDEBUG
         if(this->verbose){
 #endif
             if(this->useSSD)
@@ -2021,10 +2028,11 @@ void reg_f3d<T>::Run_f3d()
                 printf("[%s] Initial Inverse consistency value: %g\n", this->executableName, bestIC);
 #ifdef NDEBUG
         }
-#endif
+#endif */
         // The initial objective function values are kept
-		if(this->userandomsampling) this->clearrandomsampling();
+		//if(this->userandomsampling) this->clearrandomsampling();
         this->currentIteration = 0;
+		 //T addedStep=0.0f;
         while(this->currentIteration<this->maxiterationNumber){
 
           /*   if(currentSize<=smallestSize)
@@ -2070,9 +2078,9 @@ void reg_f3d<T>::Run_f3d()
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize*0.85;
+            currentSize=maxStepSize*3.85/(2+currentIteration);
             T addedStep=0.0f;//bestValue=0;
-            /* while(currentSize>smallestSize &&
+           /*  while(currentSize>smallestSize &&
                   lineIteration<12 &&
                   this->currentIteration<this->maxiterationNumber){ */
                 T currentLength = -currentSize/maxLength;
@@ -2108,9 +2116,9 @@ void reg_f3d<T>::Run_f3d()
                     bestWL2 = currentWL2;
                     bestWJac = currentWJac;
                     bestIC = currentIC;
-                    addedStep += currentSize;
-                    //currentSize*=1.1f;
-                    //currentSize = (currentSize<maxStepSize)?currentSize:maxStepSize;
+                  /*   addedStep += currentSize;
+                    currentSize*=1.1f;
+				  currentSize = (currentSize<maxStepSize)?currentSize:maxStepS ize;*/
                     this->SaveCurrentControlPoint();
 #ifndef NDEBUG
                     printf("[NiftyReg DEBUG] [%i] objective function: %g = %g - %g - %g - %g - %g | KEPT\n",
@@ -2124,10 +2132,10 @@ void reg_f3d<T>::Run_f3d()
                            this->currentIteration, currentValue, currentWMeasure, currentWBE, currentWLE, currentWL2,  currentWJac);
 #endif
                 }
-                //lineIteration++;
-				  //}
-            this->RestoreCurrentControlPoint();
-            currentSize=addedStep;
+                /* lineIteration++;
+				  } */
+            //this->RestoreCurrentControlPoint();
+            //currentSize=addedStep;
 #ifdef NDEBUG
             if(this->verbose){
 #endif
@@ -2149,10 +2157,11 @@ void reg_f3d<T>::Run_f3d()
                 if(bestIC!=0)
                     printf(" - (IC)%.2e", bestIC);
                 printf(" [+ %g mm]\n", addedStep);
+				//printf(" [+ %g mm]\n", currentSize);
 #ifdef NDEBUG
             }
 #endif
-
+/* 
             if(addedStep==0.f) 
 	    {
 	      iProgressStep += this->maxiterationNumber - 1 - this->currentIteration;
@@ -2171,7 +2180,7 @@ void reg_f3d<T>::Run_f3d()
 		(*funcProgressCallback)(100.*iProgressStep/nProgressSteps, 
 					paramsProgressCallback);
 	      }
-	    }
+	    } */
 		if(this->userandomsampling) this->clearrandomsampling();
         }
 
