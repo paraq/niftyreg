@@ -417,29 +417,48 @@ template <class T>
 void reg_f3d_gpu<T>::randomsampling(int samples)
 {
 
-	int *targetMask_h; 
-	
-	
    
-	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
-    
+	//random sampling cuda
+/* 
+	reg_randomsamplingMask_gpu(this->currentMask_gpu,samples,this->activeVoxelNumber[this->currentLevel]);
+	this->activeVoxelNumber[this->currentLevel]=samples; */
+	
+	//random sampling cpu
+	
+int *targetMask_h; 
    
-	//random sampling
-/*  	for (int i=0;i<samples;i++)
+
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,samples*sizeof(int)))
+	
+ 	for (int i=0;i<samples;i=i+1)
 	{
-		targetMask_h[i]=rand()% this->activeVoxelNumber[this->currentLevel];
+		targetMask_h[i]=rand()% (this->activeVoxelNumber[this->currentLevel]);
+	 	//printf("Index=i=%d\n",i);
+		//printf("targetMask_h[%d]=%d\n",i,targetMask_h[i]);
+	/* 	for (int x=i+1; (x<i+16) && (x<samples) ;x++)
+		{
+			
+			targetMask_h[x]=targetMask_h[i]+x;
+			//printf("targetMask_h[%d]=%d\n",x,targetMask_h[x]);
+		}  */
+			
 	}
-	 */
-	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+	this->activeVoxelNumber[this->currentLevel]=samples;
+	//exit(1);
+	 
+	//full sampling 
+	/* NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
     int *targetMask_h_ptr = &targetMask_h[0];
     for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
         if( this->currentMask[i]!=-1) *targetMask_h_ptr++=i;
     }
+	 */
 	
-	//this->activeVoxelNumber[this->currentLevel]=samples;
 	
     NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+								 
+								 
     NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int),
                                  cudaMemcpyHostToDevice))

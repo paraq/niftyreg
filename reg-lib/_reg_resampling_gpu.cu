@@ -15,6 +15,11 @@
 #include "_reg_resampling_gpu.h"
 #include "_reg_resampling_kernels.cu"
 
+#include <curand.h>
+#include <curand_kernel.h>
+
+#include <unistd.h>
+
 /* *************************************************************** */
 /* *************************************************************** */
 void reg_resampleSourceImage_gpu(nifti_image *sourceImage,
@@ -135,5 +140,34 @@ void reg_getSourceImageGradient_gpu(nifti_image *sourceImage,
 }
 /* *************************************************************** */
 /* *************************************************************** */
+void reg_randomsamplingMask_gpu(int *mask_d,
+							int samples,
+							int activeVoxelNumber)
+{	dim3 B1(1024,1,1);
+    dim3 G1(samples/1024,1,1);
+	
+	  curandState_t* states;
+
+  /* allocate space on the GPU for the random states */
+	NR_CUDA_SAFE_CALL(cudaMalloc((void**) &states, samples * sizeof(curandState_t)))
+  
+	//init<<<G1, B1 >>>(time(0), states);
+	
+	
+	NR_CUDA_SAFE_CALL(cudaMalloc(&mask_d,samples*sizeof(int)))
+	reg_randomsamplingMask_kernel <<< G1, B1 >>> (states,mask_d,samples,activeVoxelNumber,time(0));
+	NR_CUDA_CHECK_KERNEL(G1,B1)
+	
+	//random sampling checking
+/* 	int *targetMask_h; 
+	targetMask_h=(int *)malloc(samples * sizeof(int));
+	NR_CUDA_SAFE_CALL(cudaMemcpy(targetMask_h,mask_d,samples*sizeof(int),cudaMemcpyDeviceToHost))
+	for (int i=0;i<samples;i++)
+	{
+		printf("targetMask_h[%d]=%d\n",i,targetMask_h[i]);
+	}
+	free(targetMask_h); */
+	
+}
 
 #endif

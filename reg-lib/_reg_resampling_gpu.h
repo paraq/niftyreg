@@ -29,4 +29,10 @@ void reg_getSourceImageGradient_gpu(nifti_image *sourceImage,
                                     float4 **positionFieldImageArray_d,
                                     float4 **resultGradientArray_d,
                                     int activeVoxelNumber);
+
+extern "C++"
+void reg_randomsamplingMask_gpu(int *mask_d,
+							int samples,
+							int activeVoxelNumber);									
+
 #endif

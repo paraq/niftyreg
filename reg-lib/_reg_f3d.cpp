@@ -13,6 +13,7 @@
 #define _REG_F3D_CPP
 
 #include "_reg_f3d.h"
+#include <sys/time.h>
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
@@ -1938,7 +1939,7 @@ void reg_f3d<T>::Run_f3d()
     // Compute the resolution of the progress bar
     float iProgressStep=1, nProgressSteps;
     nProgressSteps = this->levelToPerform*this->maxiterationNumber;
-
+	struct timeval t1, t2;
 
     for(this->currentLevel=0;
         this->currentLevel<this->levelToPerform;
@@ -2005,7 +2006,7 @@ void reg_f3d<T>::Run_f3d()
 
         // Evalulate the objective function value
         //double bestValue = bestWMeasure - bestWBE - bestWLE - bestWL2 - bestWJac - bestIC;
-		double bestValue = 0 ; 
+		double bestValue = 0,elapsedTime=0.0 ; 
 		double bestWMeasure = 0.0;
 		double bestWBE=0.0;
 		double bestWLE=0.0;
@@ -2037,9 +2038,13 @@ void reg_f3d<T>::Run_f3d()
 
           /*   if(currentSize<=smallestSize)
                 break; */
-			
+			gettimeofday(&t1, NULL);
 			if(this->userandomsampling) this->randomsampling(this->samples);
-			
+			gettimeofday(&t2, NULL);
+			elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+			elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+			//printf("[NiftyReg F3D] ramdom sampling time=%f msec\n", elapsedTime);
+			//exit(1);
             // Compute the gradient of the similarity measure
             if(this->similarityWeight>0){
                 this->WarpFloatingImage(this->interpolation);
@@ -2078,7 +2083,7 @@ void reg_f3d<T>::Run_f3d()
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize*3.85/(2+currentIteration);
+            currentSize=maxStepSize*4.00/pow((2+currentIteration),0.90);
             T addedStep=0.0f;//bestValue=0;
            /*  while(currentSize>smallestSize &&
                   lineIteration<12 &&
