@@ -1985,6 +1985,8 @@ void reg_f3d<T>::Run_f3d()
         T currentSize = maxStepSize;
         T smallestSize = maxStepSize / 100.0f;
 		printf("maxStepsize=%f smallestSize=%f \n",maxStepSize,smallestSize);
+		
+		//if (this->currentLevel==0) this->samples=this->activeVoxelNumber[this->currentLevel];
         // Compute initial penalty terms
         /* double bestWJac = this->ComputeJacobianBasedPenaltyTerm(1); // 20 iterations
 
@@ -2000,7 +2002,9 @@ void reg_f3d<T>::Run_f3d()
             this->WarpFloatingImage(this->interpolation);
             bestWMeasure = this->ComputeSimilarityMeasure();
         }
-
+		
+		
+		
         // Compute the Inverse consistency penalty term if required
         double bestIC = this->GetInverseConsistencyPenaltyTerm(); */
 
@@ -2072,23 +2076,23 @@ void reg_f3d<T>::Run_f3d()
             this->GetL2NormDispGradient();
             this->GetInverseConsistencyGradient();
 
-            T maxLength = this->GetMaximalGradientLength();
+ /*            T maxLength = this->GetMaximalGradientLength();
 #ifndef NDEBUG
             printf("[NiftyReg DEBUG] Objective function gradient maximal length: %g\n",maxLength);
 #endif
             if(maxLength==0){
                 printf("No Gradient ... exit\n");
                 exit(1);
-            }
+            } */
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize*4.00/pow((2+currentIteration),0.90);
+            currentSize=maxStepSize*0.0550/pow((20+currentIteration),0.90);
             T addedStep=0.0f;//bestValue=0;
            /*  while(currentSize>smallestSize &&
                   lineIteration<12 &&
                   this->currentIteration<this->maxiterationNumber){ */
-                T currentLength = -currentSize/maxLength;
+                T currentLength = -currentSize/* /maxLength */;
 #ifndef NDEBUG
                 printf("[NiftyReg DEBUG] Current added max step: %g\n", currentSize);
 #endif
@@ -2161,7 +2165,7 @@ void reg_f3d<T>::Run_f3d()
                     printf(" - (wJAC)%.2e", bestWJac);
                 if(bestIC!=0)
                     printf(" - (IC)%.2e", bestIC);
-                printf(" [+ %g mm]\n", addedStep);
+                printf(" [+ %g mm]\n", currentSize);
 				//printf(" [+ %g mm]\n", currentSize);
 #ifdef NDEBUG
             }
