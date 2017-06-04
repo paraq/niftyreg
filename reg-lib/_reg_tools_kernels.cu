@@ -9,7 +9,7 @@
 
 #ifndef _REG_TOOLS_KERNELS_CU
 #define _REG_TOOLS_KERNELS_CU
-
+#include <stdio.h>
 __device__ __constant__ int c_NodeNumber;
 __device__ __constant__ int c_VoxelNumber;
 __device__ __constant__ int3 c_TargetImageDim;
@@ -51,8 +51,10 @@ __global__ void reg_voxelCentric2NodeCentric_kernel(float4 *nodeNMIGradientArray
                                                       c_Weight*gradientValue.y,
                                                       c_Weight*gradientValue.z,
                                                       0.0f);
+			//printf("nodeNMIGradientArray_d [%d] x=%f y=%f z=%f\n",tid,nodeNMIGradientArray_d[tid].x,nodeNMIGradientArray_d[tid].y,nodeNMIGradientArray_d[tid].z);
         }
         else nodeNMIGradientArray_d[tid]=make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+		//printf("nodeNMIGradientArray_d [%d] x=%f y=%f z=%f\n",tid,nodeNMIGradientArray_d[tid].x,nodeNMIGradientArray_d[tid].y,nodeNMIGradientArray_d[tid].z);
     }
 }
 

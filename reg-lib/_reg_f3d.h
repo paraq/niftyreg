@@ -67,6 +67,7 @@ class reg_f3d
 	
 	bool userandomsampling;
 	int samples;
+	int max_value;
 //    int threadNumber;
 
     bool initialised;
@@ -124,7 +125,7 @@ class reg_f3d
 	
 	virtual	void AllocateandcpyTargetImage();
 	virtual void Cleargputargetimage();
-	virtual void randomsampling(int);
+	virtual void randomsampling();
 	virtual void clearrandomsampling();
 	
 	

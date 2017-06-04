@@ -69,7 +69,7 @@ class reg_f3d_gpu : public reg_f3d<T>
 	
 	void AllocateandcpyTargetImage();
 	void Cleargputargetimage();
-	void randomsampling(int);
+	void randomsampling();
 	void clearrandomsampling();
 	
     void SaveCurrentControlPoint();

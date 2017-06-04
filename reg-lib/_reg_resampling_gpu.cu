@@ -89,9 +89,11 @@ void reg_getSourceImageGradient_gpu(nifti_image *sourceImage,
                                     cudaArray **sourceImageArray_d,
                                     float4 **positionFieldImageArray_d,
                                     float4 **resultGradientArray_d,
-                                    int activeVoxelNumber)
+                                    int activeVoxelNumber,
+									int *mask_d)
 {
     int3 sourceDim = make_int3(sourceImage->nx, sourceImage->ny, sourceImage->nz);
+	printf("activeVoxelNumber=%d\n",activeVoxelNumber);
 
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_SourceDim, &sourceDim, sizeof(int3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ActiveVoxelNumber, &activeVoxelNumber, sizeof(int)))
@@ -105,6 +107,7 @@ void reg_getSourceImageGradient_gpu(nifti_image *sourceImage,
 
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float>();
     NR_CUDA_SAFE_CALL(cudaBindTextureToArray(sourceTexture, *sourceImageArray_d, channelDesc))
+	NR_CUDA_SAFE_CALL(cudaBindTexture(0, maskTexture, mask_d, activeVoxelNumber*sizeof(int)))
 
     //Bind positionField to texture
     NR_CUDA_SAFE_CALL(cudaBindTexture(0, positionFieldTexture, *positionFieldImageArray_d, activeVoxelNumber*sizeof(float4)))
@@ -135,6 +138,7 @@ void reg_getSourceImageGradient_gpu(nifti_image *sourceImage,
     NR_CUDA_SAFE_CALL(cudaUnbindTexture(sourceTexture))
     NR_CUDA_SAFE_CALL(cudaUnbindTexture(positionFieldTexture))
     NR_CUDA_SAFE_CALL(cudaUnbindTexture(sourceMatrixTexture))
+	NR_CUDA_SAFE_CALL(cudaUnbindTexture(maskTexture))
 
     cudaFree(sourceRealToVoxel_d);
 }

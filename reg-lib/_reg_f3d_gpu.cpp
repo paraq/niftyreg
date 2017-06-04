@@ -414,7 +414,7 @@ void reg_f3d_gpu<T>::Cleargputargetimage()
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template <class T>
-void reg_f3d_gpu<T>::randomsampling(int samples)
+void reg_f3d_gpu<T>::randomsampling()
 {
 
    
@@ -428,11 +428,11 @@ void reg_f3d_gpu<T>::randomsampling(int samples)
  int *targetMask_h;
    
 
-	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,samples*sizeof(int)))
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
 	
- 	for (int i=0;i<samples;i=i+1)
+ 	for (int i=0;i<this->activeVoxelNumber[this->currentLevel];i=i+1)
 	{
-		targetMask_h[i]=rand()% (this->activeVoxelNumber[this->currentLevel]);
+		targetMask_h[i]=rand()% (this->max_value);
 	 	//printf("Index=i=%d\n",i);
 		//printf("targetMask_h[%d]=%d\n",i,targetMask_h[i]);
 	/* 	for (int x=i+1; (x<i+16) && (x<samples) ;x++)
@@ -443,7 +443,7 @@ void reg_f3d_gpu<T>::randomsampling(int samples)
 		}  */
 			
 	}
-	this->activeVoxelNumber[this->currentLevel]=samples; 
+	//this->activeVoxelNumber[this->currentLevel]=samples; 
 	//exit(1);
 	 
 	//full sampling 
@@ -726,14 +726,16 @@ void reg_f3d_gpu<T>::GetVoxelBasedGradient()
                                     &this->currentFloating_gpu,
                                     &this->deformationFieldImage_gpu,
                                     &this->warpedGradientImage_gpu,
-                                    this->activeVoxelNumber[this->currentLevel]);
+                                    this->activeVoxelNumber[this->currentLevel],
+									this->currentMask_gpu);
 
     if(this->currentFloating->nt==2){
         reg_getSourceImageGradient_gpu( this->currentFloating,
                                         &this->currentFloating2_gpu,
                                         &this->deformationFieldImage_gpu,
                                         &this->warpedGradientImage2_gpu,
-                                        this->activeVoxelNumber[this->currentLevel]);
+                                        this->activeVoxelNumber[this->currentLevel],
+										this->currentMask_gpu);
     }
 
     // The voxel based NMI gradient
@@ -792,6 +794,7 @@ void reg_f3d_gpu<T>::GetSimilarityMeasureGradient()
                                         &this->voxelBasedMeasureGradientImage_gpu,
                                         &this->nodeBasedGradientImage_gpu,
                                         1.0-this->bendingEnergyWeight-this->jacobianLogWeight);
+	
     /* The NMI gradient is converted from voxel space to real space */
     mat44 *floatingMatrix_xyz=NULL;
     if(this->currentFloating->sform_code>0)

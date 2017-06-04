@@ -73,6 +73,7 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->currentIteration=0;
     this->usePyramid=true;
 	this->userandomsampling=false;
+	this->max_value=0;
     //	this->threadNumber=1;
 
     this->initialised=false;
@@ -550,7 +551,7 @@ void reg_f3d<T>::Cleargputargetimage()
 
 
 template <class T>
-void reg_f3d<T>::randomsampling(int samples)
+void reg_f3d<T>::randomsampling()
 {
 
     return;
@@ -1944,7 +1945,8 @@ void reg_f3d<T>::Run_f3d()
     for(this->currentLevel=0;
         this->currentLevel<this->levelToPerform;
         this->currentLevel++){
-
+		this->max_value=this->activeVoxelNumber[this->currentLevel];
+		this->activeVoxelNumber[this->currentLevel]=samples;
         if(this->usePyramid){
             this->currentReference = this->referencePyramid[this->currentLevel];
             this->currentFloating = this->floatingPyramid[this->currentLevel];
@@ -2043,7 +2045,7 @@ void reg_f3d<T>::Run_f3d()
           /*   if(currentSize<=smallestSize)
                 break; */
 			gettimeofday(&t1, NULL);
-			if(this->userandomsampling) this->randomsampling(this->samples);
+			if(this->userandomsampling) this->randomsampling();
 			gettimeofday(&t2, NULL);
 			elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
 			elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
@@ -2087,7 +2089,7 @@ void reg_f3d<T>::Run_f3d()
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize*0.0550/pow((20+currentIteration),0.90);
+            currentSize=maxStepSize*0.9550/pow((20+currentIteration),0.90);
             T addedStep=0.0f;//bestValue=0;
            /*  while(currentSize>smallestSize &&
                   lineIteration<12 &&

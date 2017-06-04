@@ -67,9 +67,11 @@ __global__ void reg_resampleSourceImage_kernel(float *resultArray)
 __global__ void reg_getSourceImageGradient_kernel(float4 *gradientArray)
 {
     const int tid= (blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
+	
     if(tid<c_ActiveVoxelNumber){
 
         //Get the real world position in the source space
+		//const int index=tex1Dfetch(maskTexture,tid);
         float4 realPosition = tex1Dfetch(positionFieldTexture,tid);
 	
         //Get the voxel-based position in the source space
