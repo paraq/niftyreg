@@ -216,6 +216,10 @@ int main(int argc, char **argv)
 	
 	bool randomsampling=false;
 	unsigned int samples=0;
+	bool setSGD = false;
+	int param_Astep=0;
+	float param_a=0;
+	float param_alfa=0;
 
     bool useSym=false;
     bool additiveNMI = false;
@@ -431,6 +435,12 @@ int main(int argc, char **argv)
 		else if(strcmp(argv[i], "-rdmsam") ==0){
 			randomsampling=true;
             samples=atof(argv[++i]);
+        }
+		else if(strcmp(argv[i], "-SGD") ==0){
+			setSGD=true;
+			param_a=atof(argv[++i]);
+			param_Astep=atof(argv[++i]);
+			param_alfa=atof(argv[++i]);
         }
 #ifdef _BUILD_NR_DEV
         else if(strcmp(argv[i], "-vel")==0 || strcmp(argv[i], "--vel")==0){
@@ -810,7 +820,9 @@ int main(int argc, char **argv)
 
     if (additiveNMI) REG->SetAdditiveMC();
 	
-	REG->SetRandomSampling(randomsampling,samples);
+	if (randomsampling) REG->SetRandomSampling(randomsampling,samples);
+	
+	if (setSGD) REG->SetSGDparameters(param_a,param_Astep,param_alfa);
 
     // F3D SYM arguments
     if(floatingMaskImage!=NULL){

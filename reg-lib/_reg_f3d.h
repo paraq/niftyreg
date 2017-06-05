@@ -68,6 +68,9 @@ class reg_f3d
 	bool userandomsampling;
 	int samples;
 	int max_value;
+	float param_a;
+	float param_alfa;
+	int param_Astep;
 //    int threadNumber;
 
     bool initialised;
@@ -182,6 +185,7 @@ public:
     void SetLevelToPerform(unsigned int);
     void SetGradientSmoothingSigma(T);
 	void SetRandomSampling(bool,unsigned int);
+	void SetSGDparameters(float,int,float);
     // Set the multi channel implementation to additive.
     void SetAdditiveMC() { this->additive_mc_nmi = true; }
 

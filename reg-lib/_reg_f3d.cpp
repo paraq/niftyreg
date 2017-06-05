@@ -74,6 +74,9 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->usePyramid=true;
 	this->userandomsampling=false;
 	this->max_value=0;
+	this->param_a=0.755;
+	this->param_Astep=20;
+	this->param_alfa=0.90;
     //	this->threadNumber=1;
 
     this->initialised=false;
@@ -456,6 +459,15 @@ void reg_f3d<T>::SetRandomSampling(bool flag,unsigned int s)
 //	this->threadNumber = t;
 //	return 0;
 //}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template<class T>
+void reg_f3d<T>::SetSGDparameters(float a, int Astep, float alfa)
+{
+	this->param_a=a;
+	this->param_Astep=Astep;
+	this->param_alfa=alfa;	
+	
+}
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template<class T>
 void reg_f3d<T>::DoNotUsePyramidalApproach()
@@ -1945,8 +1957,11 @@ void reg_f3d<T>::Run_f3d()
     for(this->currentLevel=0;
         this->currentLevel<this->levelToPerform;
         this->currentLevel++){
+		
+		if(this->userandomsampling){
 		this->max_value=this->activeVoxelNumber[this->currentLevel];
 		this->activeVoxelNumber[this->currentLevel]=samples;
+		}
         if(this->usePyramid){
             this->currentReference = this->referencePyramid[this->currentLevel];
             this->currentFloating = this->floatingPyramid[this->currentLevel];
@@ -2089,7 +2104,7 @@ void reg_f3d<T>::Run_f3d()
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize*0.9550/pow((20+currentIteration),0.90);
+            currentSize=maxStepSize*(this->param_a)/pow((this->param_Astep+currentIteration),this->param_alfa);
             T addedStep=0.0f;//bestValue=0;
            /*  while(currentSize>smallestSize &&
                   lineIteration<12 &&
