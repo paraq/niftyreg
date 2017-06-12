@@ -1917,7 +1917,7 @@ void reg_f3d<T>::DisplayCurrentLevelParameters()
                    this->controlPointGrid->dz);
 			if(this->userandomsampling)
 			{
-				printf("[%s] Random sampling is used with %d samples\n", this->executableName,this->samples);
+				printf("[%s] Random sampling is used with %f percent of the samples\n", this->executableName,this->samples);
 			}
 #ifdef NDEBUG
         }
@@ -1963,7 +1963,7 @@ void reg_f3d<T>::Run_f3d()
 		//this->activeVoxelNumber[this->currentLevel]=this->samples;
 		float temp=/* (static_cast<float> */(this->samples)/100;
 		this->activeVoxelNumber[this->currentLevel]=static_cast<int>(this->activeVoxelNumber[this->currentLevel]*temp);
-		printf("temp=%f Number of samples=%d\n",temp,this->activeVoxelNumber[this->currentLevel]);
+		printf("this->max_value=%d temp=%f Number of samples=%d\n",this->max_value,temp,this->activeVoxelNumber[this->currentLevel]);
 		}
         if(this->usePyramid){
             this->currentReference = this->referencePyramid[this->currentLevel];

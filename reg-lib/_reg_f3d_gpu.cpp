@@ -430,17 +430,17 @@ void reg_f3d_gpu<T>::randomsampling()
 
 	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
 	
- 	for (int i=0;i<this->activeVoxelNumber[this->currentLevel];i=i+1)
+ 	for (int i=0;i<this->activeVoxelNumber[this->currentLevel];i=i+32)
 	{
-		targetMask_h[i]=rand()% (this->max_value);
+		targetMask_h[i]=rand()% (this->max_value-500);
 	 	//printf("Index=i=%d\n",i);
 		//printf("targetMask_h[%d]=%d\n",i,targetMask_h[i]);
-	/* 	for (int x=i+1; (x<i+16) && (x<samples) ;x++)
+		for (int x=i+1; (x<i+32) /* && (x<this->activeVoxelNumber[this->currentLevel]) */ ;x++)
 		{
 			
-			targetMask_h[x]=targetMask_h[i]+x;
+			targetMask_h[x]=targetMask_h[i]-i+x;
 			//printf("targetMask_h[%d]=%d\n",x,targetMask_h[x]);
-		}  */
+		} 
 			
 	}
 	//this->activeVoxelNumber[this->currentLevel]=samples; 
