@@ -66,7 +66,7 @@ class reg_f3d
     int interpolation;
 	
 	bool userandomsampling;
-	int samples;
+	float samples;
 	int max_value;
 	float param_a;
 	float param_alfa;

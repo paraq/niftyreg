@@ -1960,7 +1960,10 @@ void reg_f3d<T>::Run_f3d()
 		
 		if(this->userandomsampling){
 		this->max_value=this->activeVoxelNumber[this->currentLevel];
-		this->activeVoxelNumber[this->currentLevel]=samples;
+		//this->activeVoxelNumber[this->currentLevel]=this->samples;
+		float temp=/* (static_cast<float> */(this->samples)/100;
+		this->activeVoxelNumber[this->currentLevel]=static_cast<int>(this->activeVoxelNumber[this->currentLevel]*temp);
+		printf("temp=%f Number of samples=%d\n",temp,this->activeVoxelNumber[this->currentLevel]);
 		}
         if(this->usePyramid){
             this->currentReference = this->referencePyramid[this->currentLevel];
@@ -2054,6 +2057,8 @@ void reg_f3d<T>::Run_f3d()
         // The initial objective function values are kept
 		//if(this->userandomsampling) this->clearrandomsampling();
         this->currentIteration = 0;
+		
+		//if (this->currentLevel==2) this->param_a*=1.75; 
 		 //T addedStep=0.0f;
         while(this->currentIteration<this->maxiterationNumber){
 
