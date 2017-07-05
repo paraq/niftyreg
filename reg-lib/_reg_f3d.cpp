@@ -1948,6 +1948,7 @@ void reg_f3d<T>::Run_f3d()
 #endif
 
     if(!this->initialised) this->Initisalise_f3d();
+	
 
     // Compute the resolution of the progress bar
     float iProgressStep=1, nProgressSteps;

@@ -202,8 +202,8 @@ void reg_gaussianSmoothing_gpu( nifti_image *image,
 {
     const int voxelNumber = image->nx * image->ny * image->nz;
     const int3 imageDim = make_int3(image->nx, image->ny, image->nz);
-	printf("voxelNumber=%d \n",voxelNumber);
-	exit(1);
+	//printf("voxelNumber=%d \n",voxelNumber);
+	//exit(1);
 
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ImageDim, &imageDim,sizeof(int3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_VoxelNumber, &voxelNumber,sizeof(int3)))

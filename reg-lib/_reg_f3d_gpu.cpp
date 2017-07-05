@@ -432,10 +432,10 @@ void reg_f3d_gpu<T>::randomsampling()
 	
  	for (int i=0;i<this->activeVoxelNumber[this->currentLevel];i=i+32)
 	{
-		targetMask_h[i]=rand()% (this->max_value-500);
+		targetMask_h[i]=rand()% (this->max_value-32);
 	 	//printf("Index=i=%d\n",i);
 		//printf("targetMask_h[%d]=%d\n",i,targetMask_h[i]);
-		for (int x=i+1; (x<i+32) /* && (x<this->activeVoxelNumber[this->currentLevel]) */ ;x++)
+		for (int x=i+1; (x<i+32) && (x<this->activeVoxelNumber[this->currentLevel]) ;x++)
 		{
 			
 			targetMask_h[x]=targetMask_h[i]-i+x;
@@ -485,7 +485,90 @@ void reg_f3d_gpu<T>::clearrandomsampling()
 #endif
     return;
 }
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+/* template<class T>
+nifti_image **reg_f3d_gpu<T>::GetWarpedImage()
+{
+    // The initial images are used
+    if(this->inputReference==NULL ||
+            this->inputFloating==NULL ||
+            this->controlPointGrid==NULL){
+        fprintf(stderr,"[NiftyReg ERROR] reg_f3d::GetWarpedImage()\n");
+        fprintf(stderr," * The reference, floating and control point grid images have to be defined\n");
+    }
 
+    this->currentReference = this->inputReference;
+    this->currentFloating = this->inputFloating;
+    //this->currentMask=NULL;
+	
+	
+		for (i=0;i<this->max_value;i++)
+	{
+		//printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %d\n",i,c_probaJointHistogram_int[i]);
+		this->currentReference->data[i] = (float)(this->inputReference->data);
+		//voxel_number+=c_probaJointHistogram_int[i];
+	}
+	
+	this->currentMask=(int *)malloc(this->max_value* sizeof(int));
+	//fprintf(stderr,"[NiftyReg Debug] currentMask=%d\n",currentMask[10]);
+	memset(this->currentMask, 1, this->max_value * sizeof(int));
+		for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++)
+	{
+		//fprintf(stderr,"[NiftyReg Debug] currentMask[%d]=%d\n",i,this->currentMask[i]);
+	}
+	
+	int *targetMask_h;
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->max_value*sizeof(int)))
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::cudaMallocHost of targetMask_h done\n max=%d xyz=%d",this->max_value,this->currentReference->nx*this->currentReference->ny*this->currentReference->nz);
+    int *targetMask_h_ptr = &targetMask_h[0];
+    for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
+        if( this->currentMask[i]!=-1) 
+		{ *targetMask_h_ptr++=i;
+			//fprintf(stderr,"[NiftyReg Debug] currentMask[%d]=%d\n",i,this->currentMask[i]);
+		}
+    }
+
+
+	
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::fill values targetMask_h done\n");
+	    NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
+                                 this->max_value*sizeof(int)))
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::cudaMalloc of currentMask_gpu done\n");							 
+								 
+    NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
+                                 this->max_value*sizeof(int),
+                                 cudaMemcpyHostToDevice))
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::cudaMalloccpy of currentMask_gpu targetMask_h done\n");
+	this->AllocateCurrentInputImage();
+    this->AllocateWarped();
+    this->AllocateDeformationField();
+    this->WarpFloatingImage(3); // cubic spline interpolation
+    this->ClearDeformationField();
+
+    nifti_image **resultImage= (nifti_image **)malloc(sizeof(nifti_image *));
+    resultImage[0]=nifti_copy_nim_info(this->warped);
+    resultImage[0]->cal_min=this->inputFloating->cal_min;
+    resultImage[0]->cal_max=this->inputFloating->cal_max;
+    resultImage[0]->scl_slope=this->inputFloating->scl_slope;
+    resultImage[0]->scl_inter=this->inputFloating->scl_inter;
+    resultImage[0]->data=(void *)malloc(resultImage[0]->nvox*resultImage[0]->nbyper);
+	
+
+								 
+	if(this->currentFloating->nt==1){
+        if(cudaCommon_transferFromDeviceToNifti<float>
+           (this->warped, &this->warped_gpu)){
+            printf("[NiftyReg ERROR] Error when computing the similarity measure.\n");
+            exit(1);
+        }
+    }
+	
+    memcpy(resultImage[0]->data, this->warped->data, resultImage[0]->nvox*resultImage[0]->nbyper);
+
+    this->ClearWarped();
+    return resultImage;
+}
+ */
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template <class T>
@@ -594,6 +677,7 @@ template <class T>
 void reg_f3d_gpu<T>::GetDeformationField()
 {
     if(this->controlPointGrid_gpu==NULL){
+		//fprintf(stderr,"[NiftyReg Debug] reg_bspline_cpu::starting...\n");
         reg_f3d<T>::GetDeformationField();
     }
     else{
@@ -619,7 +703,7 @@ void reg_f3d_gpu<T>::WarpFloatingImage(int inter)
 
     // Compute the deformation field
     this->GetDeformationField();
-
+	
     // Resample the floating image
     reg_resampleSourceImage_gpu(this->currentFloating,
                                 &this->warped_gpu,

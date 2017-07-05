@@ -64,10 +64,11 @@ int cudaCommon_transferNiftiToArrayOnDevice(DTYPE **array_d, nifti_image *img)
     else{ // All these else could be removed but the nvcc compiler would warn for unreachable statement
         switch(img->datatype){
             case NIFTI_TYPE_FLOAT32:
+			
                 return cudaCommon_transferNiftiToArrayOnDevice1<DTYPE,float>(array_d, img);
             default:
                 fprintf(stderr, "ERROR:\tcudaCommon_transferNiftiToArrayOnDevice:\n");
-                fprintf(stderr, "ERROR:\tThe image data type is not supported\n");
+                fprintf(stderr, "ERROR:\tThe image data type %d is not supported\n",img->datatype);
                 return 1;
         }
     }
@@ -141,7 +142,7 @@ int cudaCommon_transferNiftiToArrayOnDevice(DTYPE **array_d, DTYPE **array2_d, n
                 return cudaCommon_transferNiftiToArrayOnDevice1<DTYPE,float>(array_d, array2_d, img);
             default:
                 fprintf(stderr, "ERROR:\tcudaCommon_transferNiftiToArrayOnDevice:\n");
-                fprintf(stderr, "ERROR:\tThe image data type is not supported\n");
+                fprintf(stderr, "ERROR:\tThe image data type %d is not supported\n",img->datatype);
                 return 1;
         }
     }
@@ -221,7 +222,7 @@ int cudaCommon_transferNiftiToArrayOnDevice(cudaArray **cuArray_d, nifti_image *
                 return cudaCommon_transferNiftiToArrayOnDevice1<DTYPE,float>(cuArray_d, img);
             default:
                 fprintf(stderr, "ERROR:\tcudaCommon_transferNiftiToArrayOnDevice:\n");
-                fprintf(stderr, "ERROR:\tThe image data type is not supported\n");
+                fprintf(stderr, "ERROR:\tThe image data type %d is not supported\n",img->datatype);
                 return 1;
         }
     }
@@ -329,7 +330,7 @@ int cudaCommon_transferNiftiToArrayOnDevice(cudaArray **cuArray_d, cudaArray **c
                 return cudaCommon_transferNiftiToArrayOnDevice1<DTYPE,float>(cuArray_d, cuArray2_d, img);
             default:
                 fprintf(stderr, "ERROR:\tcudaCommon_transferNiftiToArrayOnDevice:\n");
-                fprintf(stderr, "ERROR:\tThe image data type is not supported\n");
+                fprintf(stderr, "ERROR:\tThe image data type %d is not supported\n",img->datatype);
                 return 1;
         }
     }
@@ -441,7 +442,7 @@ int cudaCommon_transferFromDeviceToNifti(nifti_image *img, DTYPE **array_d)
                 return cudaCommon_transferFromDeviceToNifti1<DTYPE,float>(img, array_d);
             default:
                 fprintf(stderr, "ERROR:\tcudaCommon_transferFromDeviceToNifti:\n");
-                fprintf(stderr, "ERROR:\tThe image data type is not supported\n");
+                fprintf(stderr, "ERROR:\tThe image data type %d is not supported\n",img->datatype);
                 return 1;
         }
     }
@@ -527,7 +528,7 @@ int cudaCommon_transferFromDeviceToNifti(nifti_image *img, DTYPE **array_d, DTYP
                 return cudaCommon_transferFromDeviceToNifti1<DTYPE,float>(img, array_d, array2_d);
             default:
                 fprintf(stderr, "ERROR:\tcudaCommon_transferFromDeviceToNifti:\n");
-                fprintf(stderr, "ERROR:\tThe image data type is not supported\n");
+                fprintf(stderr, "ERROR:\tThe image data type %d is not supported\n",img->datatype);
                 return 1;
         }
     }

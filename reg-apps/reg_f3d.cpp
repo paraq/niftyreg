@@ -911,7 +911,13 @@ int main(int argc, char **argv)
             reg_io_WriteImageFile(outputBackwardControlPointGridImage,b.c_str());
             nifti_image_free(outputBackwardControlPointGridImage);outputBackwardControlPointGridImage=NULL;
         }
-
+		
+		time_t end1; time( &end1 );
+        int minutes = (int)floorf(float(end1-start)/60.0f);
+        int seconds = (int)(end1-start - 60*minutes);
+		printf("[NiftyReg F3D] Transformation performed in %i min %i sec\n", minutes, seconds);
+		
+		
         // Save the warped image result(s)
 		
         nifti_image **outputWarpedImage=(nifti_image **)malloc(2*sizeof(nifti_image *));

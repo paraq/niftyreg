@@ -71,6 +71,7 @@ class reg_f3d_gpu : public reg_f3d<T>
 	void Cleargputargetimage();
 	void randomsampling();
 	void clearrandomsampling();
+	//nifti_image **GetWarpedImage();
 	
     void SaveCurrentControlPoint();
     void RestoreCurrentControlPoint();
