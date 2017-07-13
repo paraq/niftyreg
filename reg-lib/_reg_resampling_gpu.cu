@@ -90,7 +90,7 @@ void reg_resampleSourceImage_gpu(nifti_image *sourceImage,
 	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
     elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
 	printf("[NiftyReg F3D] reg_resampleSourceImage_kernel time =%f msec\n", elapsedTime);
-	printf("[NiftyReg F3D] reg_resampleSourceImage_kernel throughput =%f voxel per sec\n", (activeVoxelNumber*1000)/elapsedTime);
+	//printf("[NiftyReg F3D] reg_resampleSourceImage_kernel throughput =%f voxel per sec\n", (activeVoxelNumber*1000)/elapsedTime);
 }
 /* *************************************************************** */
 /* *************************************************************** */

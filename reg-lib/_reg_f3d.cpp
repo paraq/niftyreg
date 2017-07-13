@@ -73,8 +73,9 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->currentIteration=0;
     this->usePyramid=true;
 	this->userandomsampling=false;
+	this->samples=10;
 	this->max_value=0;
-	this->param_a=0.755;
+	this->param_a=0.25;
 	this->param_Astep=20;
 	this->param_alfa=0.90;
     //	this->threadNumber=1;
@@ -1917,7 +1918,7 @@ void reg_f3d<T>::DisplayCurrentLevelParameters()
                    this->controlPointGrid->dz);
 			if(this->userandomsampling)
 			{
-				printf("[%s] Random sampling is used with %f percent of the samples\n", this->executableName,this->samples);
+				printf("[%s] Total samples=%d Percents=%f Number of random samples=%d\n",this->executableName,this->max_value,this->samples,this->activeVoxelNumber[this->currentLevel]);
 			}
 #ifdef NDEBUG
         }
@@ -1964,7 +1965,7 @@ void reg_f3d<T>::Run_f3d()
 		//this->activeVoxelNumber[this->currentLevel]=this->samples;
 		float temp=/* (static_cast<float> */(this->samples)/100;
 		this->activeVoxelNumber[this->currentLevel]=static_cast<int>(this->activeVoxelNumber[this->currentLevel]*temp);
-		printf("this->max_value=%d temp=%f Number of samples=%d\n",this->max_value,temp,this->activeVoxelNumber[this->currentLevel]);
+		
 		}
         if(this->usePyramid){
             this->currentReference = this->referencePyramid[this->currentLevel];
@@ -2005,7 +2006,7 @@ void reg_f3d<T>::Run_f3d()
         maxStepSize = (this->currentReference->dz>maxStepSize)?this->currentReference->dz:maxStepSize;
         T currentSize = maxStepSize;
         T smallestSize = maxStepSize / 100.0f;
-		printf("maxStepsize=%f smallestSize=%f \n",maxStepSize,smallestSize);
+		printf("[%s] MaxStepsize=%f \n",this->executableName,maxStepSize);
 		
 		//if (this->currentLevel==0) this->samples=this->activeVoxelNumber[this->currentLevel];
         // Compute initial penalty terms

@@ -62,7 +62,7 @@ void reg_bspline_gpu(nifti_image *controlPointImage,
 	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
     elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
 	printf("[NiftyReg F3D] reg_bspline_getDeformationField time =%f msec\n", elapsedTime);
-	printf("[NiftyReg F3D] reg_bspline_getDeformationField throughput =%f voxel per sec\n", (activeVoxelNumber*1000)/elapsedTime);
+	//printf("[NiftyReg F3D] reg_bspline_getDeformationField throughput =%f voxel per sec\n", (activeVoxelNumber*1000)/elapsedTime);
     return;
 }
 /* *************************************************************** */

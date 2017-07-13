@@ -877,7 +877,7 @@ void reg_f3d_gpu<T>::GetSimilarityMeasureGradient()
                                         this->controlPointGrid,
                                         &this->voxelBasedMeasureGradientImage_gpu,
                                         &this->nodeBasedGradientImage_gpu,
-                                        1.0-this->bendingEnergyWeight-this->jacobianLogWeight);
+                                        (1.0-this->bendingEnergyWeight-this->jacobianLogWeight)*100/this->samples);
 	
     /* The NMI gradient is converted from voxel space to real space */
     mat44 *floatingMatrix_xyz=NULL;
