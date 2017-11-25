@@ -41,7 +41,7 @@ class reg_f3d_gpu : public reg_f3d<T>
     float4 *conjugateH_gpu;
     float4 *bestControlPointPosition_gpu;
     float *logJointHistogram_gpu;
-
+	float *targetimage_gpu;
     // cuda variable for multispectral registration
     cudaArray *currentReference2_gpu;
     cudaArray *currentFloating2_gpu;
@@ -66,7 +66,13 @@ class reg_f3d_gpu : public reg_f3d<T>
     void ClearBestControlPointArray();
     void AllocateJointHistogram();
     void ClearJointHistogram();
-
+	
+	void AllocateandcpyTargetImage();
+	void Cleargputargetimage();
+	void randomsampling();
+	void clearrandomsampling();
+	//nifti_image **GetWarpedImage();
+	
     void SaveCurrentControlPoint();
     void RestoreCurrentControlPoint();
     double ComputeJacobianBasedPenaltyTerm(int);

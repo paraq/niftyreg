@@ -14,6 +14,7 @@
 
 #include "_reg_localTransformation_gpu.h"
 #include "_reg_localTransformation_kernels.cu"
+#include <sys/time.h>
 
 /* *************************************************************** */
 /* *************************************************************** */
@@ -24,7 +25,7 @@ void reg_bspline_gpu(nifti_image *controlPointImage,
                      int **mask_d,
                      int activeVoxelNumber,
                      bool bspline)
-{
+{	
     const int voxelNumber = reference->nx * reference->ny * reference->nz;
     const int controlPointNumber = controlPointImage->nx*controlPointImage->ny*controlPointImage->nz;
     const int3 referenceImageDim = make_int3(reference->nx, reference->ny, reference->nz);
@@ -35,17 +36,19 @@ void reg_bspline_gpu(nifti_image *controlPointImage,
         controlPointImage->dx / reference->dx,
         controlPointImage->dy / reference->dy,
         controlPointImage->dz / reference->dz);
-
+	struct timeval t1, t2;
+    double elapsedTime;
+	gettimeofday(&t1, NULL);
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_UseBSpline,&useBSpline,sizeof(int)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_VoxelNumber,&voxelNumber,sizeof(int)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ReferenceImageDim,&referenceImageDim,sizeof(int3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ControlPointImageDim,&controlPointImageDim,sizeof(int3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ControlPointVoxelSpacing,&controlPointVoxelSpacing,sizeof(float3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ActiveVoxelNumber,&activeVoxelNumber,sizeof(int)))
-
+	
     NR_CUDA_SAFE_CALL(cudaBindTexture(0, controlPointTexture, *controlPointImageArray_d, controlPointNumber*sizeof(float4)))
     NR_CUDA_SAFE_CALL(cudaBindTexture(0, maskTexture, *mask_d, activeVoxelNumber*sizeof(int)))
-
+	
     const unsigned int Grid_reg_bspline_getDeformationField =
         (unsigned int)ceilf(sqrtf((float)activeVoxelNumber/(float)(Block_reg_bspline_getDeformationField)));
     dim3 G1(Grid_reg_bspline_getDeformationField,Grid_reg_bspline_getDeformationField,1);
@@ -55,6 +58,11 @@ void reg_bspline_gpu(nifti_image *controlPointImage,
 
     NR_CUDA_SAFE_CALL(cudaUnbindTexture(controlPointTexture))
     NR_CUDA_SAFE_CALL(cudaUnbindTexture(maskTexture))
+	gettimeofday(&t2, NULL);
+	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+    elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+	printf("[NiftyReg F3D] reg_bspline_getDeformationField time =%f msec\n", elapsedTime);
+	//printf("[NiftyReg F3D] reg_bspline_getDeformationField throughput =%f voxel per sec\n", (activeVoxelNumber*1000)/elapsedTime);
     return;
 }
 /* *************************************************************** */

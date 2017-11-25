@@ -64,6 +64,13 @@ class reg_f3d
     bool verbose;
     bool usePyramid;
     int interpolation;
+	
+	bool userandomsampling;
+	float samples;
+	int max_value;
+	float param_a;
+	float param_alfa;
+	int param_Astep;
 //    int threadNumber;
 
     bool initialised;
@@ -93,6 +100,8 @@ class reg_f3d
     bool yOptimisation;
     bool zOptimisation;
     bool gridRefinement;
+	
+	//float *targetimage_gpu;
 
     bool additive_mc_nmi; // Additive multi channel NMI
 
@@ -116,7 +125,13 @@ class reg_f3d
     virtual void ClearJointHistogram();
     virtual void AllocateCurrentInputImage();
     virtual void ClearCurrentInputImage();
-
+	
+	virtual	void AllocateandcpyTargetImage();
+	virtual void Cleargputargetimage();
+	virtual void randomsampling();
+	virtual void clearrandomsampling();
+	
+	
     virtual void SaveCurrentControlPoint();
     virtual void RestoreCurrentControlPoint();
     virtual double ComputeJacobianBasedPenaltyTerm(int);
@@ -169,7 +184,8 @@ public:
     void SetLevelNumber(unsigned int);
     void SetLevelToPerform(unsigned int);
     void SetGradientSmoothingSigma(T);
-
+	void SetRandomSampling(bool,unsigned int);
+	void SetSGDparameters(float,int,float);
     // Set the multi channel implementation to additive.
     void SetAdditiveMC() { this->additive_mc_nmi = true; }
 

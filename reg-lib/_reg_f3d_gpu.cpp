@@ -33,7 +33,7 @@ reg_f3d_gpu<T>::reg_f3d_gpu(int refTimePoint,int floTimePoint)
     this->conjugateH_gpu=NULL;
     this->bestControlPointPosition_gpu=NULL;
     this->logJointHistogram_gpu=NULL;
-
+	this->targetimage_gpu=NULL;
     this->currentReference2_gpu=NULL;
     this->currentFloating2_gpu=NULL;
     this->warped2_gpu=NULL;
@@ -130,6 +130,8 @@ void reg_f3d_gpu<T>::AllocateWarped()
         printf("[NiftyReg ERROR] reg_f3d_gpu does not handle more than 2 time points in the floating image.\n");
         exit(1);
     }
+
+	
 #ifndef NDEBUG
     printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateWarped done.\n");
 #endif
@@ -153,6 +155,8 @@ void reg_f3d_gpu<T>::ClearWarped()
         cudaCommon_free<float>(&this->warped2_gpu);
         this->warped2_gpu=NULL;
     }
+	
+	
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
@@ -375,6 +379,199 @@ void reg_f3d_gpu<T>::AllocateJointHistogram()
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template <class T>
+void reg_f3d_gpu<T>::AllocateandcpyTargetImage()
+{
+	int targetVoxelNumber = this->currentReference->nx * this->currentReference->ny * this->currentReference->nz;
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateTargetImage called.\n");
+#endif
+
+    NR_CUDA_SAFE_CALL(cudaMalloc(&this->targetimage_gpu,targetVoxelNumber*sizeof(float)));
+	NR_CUDA_SAFE_CALL((cudaMemcpy(this->targetimage_gpu,this->currentReference->data,targetVoxelNumber * sizeof(float), cudaMemcpyHostToDevice)));
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateTargetImage done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
+void reg_f3d_gpu<T>::Cleargputargetimage()
+{
+
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::Cleargputargetimage called.\n");
+#endif
+	 if(this->targetimage_gpu!=NULL){
+		NR_CUDA_SAFE_CALL(cudaFree(this->targetimage_gpu));
+		this->targetimage_gpu=NULL;
+	 }
+		
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::Cleargputargetimage done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
+void reg_f3d_gpu<T>::randomsampling()
+{
+
+   
+	//random sampling cuda
+/* 
+	reg_randomsamplingMask_gpu(this->currentMask_gpu,samples,this->activeVoxelNumber[this->currentLevel]);
+	this->activeVoxelNumber[this->currentLevel]=samples; */
+	
+	//random sampling cpu
+	
+ int *targetMask_h;
+   
+
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+	
+ 	for (int i=0;i<this->activeVoxelNumber[this->currentLevel];i=i+32)
+	{
+		targetMask_h[i]=rand()% (this->max_value-32);
+	 	//printf("Index=i=%d\n",i);
+		//printf("targetMask_h[%d]=%d\n",i,targetMask_h[i]);
+		for (int x=i+1; (x<i+32) && (x<this->activeVoxelNumber[this->currentLevel]) ;x++)
+		{
+			
+			targetMask_h[x]=targetMask_h[i]-i+x;
+			//printf("targetMask_h[%d]=%d\n",x,targetMask_h[x]);
+		} 
+			
+	}
+	//this->activeVoxelNumber[this->currentLevel]=samples; 
+	//exit(1);
+	 
+	//full sampling 
+	/* int *targetMask_h;
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+    int *targetMask_h_ptr = &targetMask_h[0];
+    for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
+        if( this->currentMask[i]!=-1) *targetMask_h_ptr++=i;
+    } */
+	
+	
+	
+    NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
+                                 this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
+								 
+								 
+    NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
+                                 this->activeVoxelNumber[this->currentLevel]*sizeof(int),
+                                 cudaMemcpyHostToDevice))
+	//printf("mask is copied to gpu\n");
+    NR_CUDA_SAFE_CALL(cudaFreeHost(targetMask_h))
+#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateRandomSampling done.\n");
+#endif
+    return;
+}
+
+
+template <class T>
+void reg_f3d_gpu<T>::clearrandomsampling()
+{
+    //reg_f3d<T>::ClearJointHistogram();
+    if(this->currentMask_gpu!=NULL){
+        cudaCommon_free<int>(&this->currentMask_gpu);
+        this->currentMask_gpu=NULL;
+    }
+	#ifndef NDEBUG
+    printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::clearrandomsampling done.\n");
+#endif
+    return;
+}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+/* template<class T>
+nifti_image **reg_f3d_gpu<T>::GetWarpedImage()
+{
+    // The initial images are used
+    if(this->inputReference==NULL ||
+            this->inputFloating==NULL ||
+            this->controlPointGrid==NULL){
+        fprintf(stderr,"[NiftyReg ERROR] reg_f3d::GetWarpedImage()\n");
+        fprintf(stderr," * The reference, floating and control point grid images have to be defined\n");
+    }
+
+    this->currentReference = this->inputReference;
+    this->currentFloating = this->inputFloating;
+    //this->currentMask=NULL;
+	
+	
+		for (i=0;i<this->max_value;i++)
+	{
+		//printf("[NiftyReg Debug parag] index=%d probaJointHistogram= %d\n",i,c_probaJointHistogram_int[i]);
+		this->currentReference->data[i] = (float)(this->inputReference->data);
+		//voxel_number+=c_probaJointHistogram_int[i];
+	}
+	
+	this->currentMask=(int *)malloc(this->max_value* sizeof(int));
+	//fprintf(stderr,"[NiftyReg Debug] currentMask=%d\n",currentMask[10]);
+	memset(this->currentMask, 1, this->max_value * sizeof(int));
+		for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++)
+	{
+		//fprintf(stderr,"[NiftyReg Debug] currentMask[%d]=%d\n",i,this->currentMask[i]);
+	}
+	
+	int *targetMask_h;
+	NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->max_value*sizeof(int)))
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::cudaMallocHost of targetMask_h done\n max=%d xyz=%d",this->max_value,this->currentReference->nx*this->currentReference->ny*this->currentReference->nz);
+    int *targetMask_h_ptr = &targetMask_h[0];
+    for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
+        if( this->currentMask[i]!=-1) 
+		{ *targetMask_h_ptr++=i;
+			//fprintf(stderr,"[NiftyReg Debug] currentMask[%d]=%d\n",i,this->currentMask[i]);
+		}
+    }
+
+
+	
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::fill values targetMask_h done\n");
+	    NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
+                                 this->max_value*sizeof(int)))
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::cudaMalloc of currentMask_gpu done\n");							 
+								 
+    NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
+                                 this->max_value*sizeof(int),
+                                 cudaMemcpyHostToDevice))
+	//fprintf(stderr,"[NiftyReg Debug] reg_f3d::cudaMalloccpy of currentMask_gpu targetMask_h done\n");
+	this->AllocateCurrentInputImage();
+    this->AllocateWarped();
+    this->AllocateDeformationField();
+    this->WarpFloatingImage(3); // cubic spline interpolation
+    this->ClearDeformationField();
+
+    nifti_image **resultImage= (nifti_image **)malloc(sizeof(nifti_image *));
+    resultImage[0]=nifti_copy_nim_info(this->warped);
+    resultImage[0]->cal_min=this->inputFloating->cal_min;
+    resultImage[0]->cal_max=this->inputFloating->cal_max;
+    resultImage[0]->scl_slope=this->inputFloating->scl_slope;
+    resultImage[0]->scl_inter=this->inputFloating->scl_inter;
+    resultImage[0]->data=(void *)malloc(resultImage[0]->nvox*resultImage[0]->nbyper);
+	
+
+								 
+	if(this->currentFloating->nt==1){
+        if(cudaCommon_transferFromDeviceToNifti<float>
+           (this->warped, &this->warped_gpu)){
+            printf("[NiftyReg ERROR] Error when computing the similarity measure.\n");
+            exit(1);
+        }
+    }
+	
+    memcpy(resultImage[0]->data, this->warped->data, resultImage[0]->nvox*resultImage[0]->nbyper);
+
+    this->ClearWarped();
+    return resultImage;
+}
+ */
+
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template <class T>
 void reg_f3d_gpu<T>::ClearJointHistogram()
 {
     reg_f3d<T>::ClearJointHistogram();
@@ -480,6 +677,7 @@ template <class T>
 void reg_f3d_gpu<T>::GetDeformationField()
 {
     if(this->controlPointGrid_gpu==NULL){
+		//fprintf(stderr,"[NiftyReg Debug] reg_bspline_cpu::starting...\n");
         reg_f3d<T>::GetDeformationField();
     }
     else{
@@ -505,7 +703,7 @@ void reg_f3d_gpu<T>::WarpFloatingImage(int inter)
 
     // Compute the deformation field
     this->GetDeformationField();
-
+	
     // Resample the floating image
     reg_resampleSourceImage_gpu(this->currentFloating,
                                 &this->warped_gpu,
@@ -530,7 +728,7 @@ void reg_f3d_gpu<T>::WarpFloatingImage(int inter)
 template <class T>
 double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
 {
-    if(this->currentFloating->nt==1){
+/*     if(this->currentFloating->nt==1){
         if(cudaCommon_transferFromDeviceToNifti<float>
            (this->warped, &this->warped_gpu)){
             printf("[NiftyReg ERROR] Error when computing the similarity measure.\n");
@@ -543,11 +741,11 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
             printf("[NiftyReg ERROR] Error when computing the similarity measure.\n");
             exit(1);
         }
-    }
+    } */
 
     double measure=0.;
     if(this->currentFloating->nt==1){
-        reg_getEntropies(this->currentReference,
+   /*      reg_getEntropies(this->currentReference,
                          this->warped,
                          this->referenceBinNumber,
                          this->floatingBinNumber,
@@ -555,8 +753,25 @@ double reg_f3d_gpu<T>::ComputeSimilarityMeasure()
                          this->logJointHistogram,
                          this->entropies,
                          this->currentMask,
-                         this->approxParzenWindow);
+                         this->approxParzenWindow); */
+
+	//calling new function					 
+		reg_getEntropies_gpu(this->currentReference,
+                         this->warped,
+                         this->referenceBinNumber,
+                         this->floatingBinNumber,
+                         this->probaJointHistogram,
+                         this->logJointHistogram,
+                         this->entropies,
+                         this->currentMask,
+                         this->approxParzenWindow,
+						 this->targetimage_gpu,
+						 this->warped_gpu,
+						 this->currentMask_gpu,
+						 this->activeVoxelNumber[this->currentLevel]);
+
     }
+	
     else if(this->currentFloating->nt==2){
         reg_getEntropies2x2_gpu(this->currentReference,
                                  this->warped,
@@ -595,14 +810,16 @@ void reg_f3d_gpu<T>::GetVoxelBasedGradient()
                                     &this->currentFloating_gpu,
                                     &this->deformationFieldImage_gpu,
                                     &this->warpedGradientImage_gpu,
-                                    this->activeVoxelNumber[this->currentLevel]);
+                                    this->activeVoxelNumber[this->currentLevel],
+									this->currentMask_gpu);
 
     if(this->currentFloating->nt==2){
         reg_getSourceImageGradient_gpu( this->currentFloating,
                                         &this->currentFloating2_gpu,
                                         &this->deformationFieldImage_gpu,
                                         &this->warpedGradientImage2_gpu,
-                                        this->activeVoxelNumber[this->currentLevel]);
+                                        this->activeVoxelNumber[this->currentLevel],
+										this->currentMask_gpu);
     }
 
     // The voxel based NMI gradient
@@ -660,7 +877,8 @@ void reg_f3d_gpu<T>::GetSimilarityMeasureGradient()
                                         this->controlPointGrid,
                                         &this->voxelBasedMeasureGradientImage_gpu,
                                         &this->nodeBasedGradientImage_gpu,
-                                        1.0-this->bendingEnergyWeight-this->jacobianLogWeight);
+                                        (1.0-this->bendingEnergyWeight-this->jacobianLogWeight)*100/this->samples);
+	
     /* The NMI gradient is converted from voxel space to real space */
     mat44 *floatingMatrix_xyz=NULL;
     if(this->currentFloating->sform_code>0)
@@ -830,18 +1048,27 @@ void reg_f3d_gpu<T>::AllocateCurrentInputImage()
         exit(1);
     }
 
-    int *targetMask_h;
+	if(this->userandomsampling==false)
+	{
+    int *targetMask_h; 
+	
     NR_CUDA_SAFE_CALL(cudaMallocHost(&targetMask_h,this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
     int *targetMask_h_ptr = &targetMask_h[0];
     for(int i=0;i<this->currentReference->nx*this->currentReference->ny*this->currentReference->nz;i++){
         if( this->currentMask[i]!=-1) *targetMask_h_ptr++=i;
     }
+	
+
+	//printf("[NiftyReg DEBUG] activeVoxelNumber=%d nx*ny*nz=%d \n",this->activeVoxelNumber[this->currentLevel],this->currentReference->nx*this->currentReference->ny*this->currentReference->nz);
+	
     NR_CUDA_SAFE_CALL(cudaMalloc(&this->currentMask_gpu,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int)))
     NR_CUDA_SAFE_CALL(cudaMemcpy(this->currentMask_gpu, targetMask_h,
                                  this->activeVoxelNumber[this->currentLevel]*sizeof(int),
                                  cudaMemcpyHostToDevice))
+	//printf("mask is copied to gpu\n");
     NR_CUDA_SAFE_CALL(cudaFreeHost(targetMask_h))
+	}
 #ifndef NDEBUG
     printf("[NiftyReg DEBUG] reg_f3d_gpu<T>::AllocateCurrentInputImage done.\n");
 #endif
@@ -867,6 +1094,7 @@ void reg_f3d_gpu<T>::ClearCurrentInputImage()
     this->currentFloating_gpu=NULL;
     NR_CUDA_SAFE_CALL(cudaFree(this->currentMask_gpu))
     this->currentMask_gpu=NULL;
+	//printf("mask is freed from gpu\n");
 
     if(this->currentReference->nt==2){
         cudaCommon_free(&this->currentReference2_gpu);

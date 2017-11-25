@@ -13,6 +13,7 @@
 #define _REG_F3D_CPP
 
 #include "_reg_f3d.h"
+#include <sys/time.h>
 
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
@@ -71,6 +72,12 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->approxParzenWindow=true;
     this->currentIteration=0;
     this->usePyramid=true;
+	this->userandomsampling=false;
+	this->samples=10;
+	this->max_value=0;
+	this->param_a=0.25;
+	this->param_Astep=20;
+	this->param_alfa=0.90;
     //	this->threadNumber=1;
 
     this->initialised=false;
@@ -91,7 +98,7 @@ reg_f3d<T>::reg_f3d(int refTimePoint,int floTimePoint)
     this->bestControlPointPosition=NULL;
     this->probaJointHistogram=NULL;
     this->logJointHistogram=NULL;
-
+	//this->targetimage_gpu=NULL;
     this->interpolation=1;
 
     this->xOptimisation=true;
@@ -439,12 +446,29 @@ void reg_f3d<T>::DoNotPrintOutInformation()
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template<class T>
+void reg_f3d<T>::SetRandomSampling(bool flag,unsigned int s)
+{
+    this->userandomsampling = flag;
+	this->samples = s;
+    return;
+}
+
 //template<class T>
 //void reg_f3d<T>::SetThreadNumber(int t)
 //{
 //	this->threadNumber = t;
 //	return 0;
 //}
+/* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+template<class T>
+void reg_f3d<T>::SetSGDparameters(float a, int Astep, float alfa)
+{
+	this->param_a=a;
+	this->param_Astep=Astep;
+	this->param_alfa=alfa;	
+	
+}
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
 template<class T>
 void reg_f3d<T>::DoNotUsePyramidalApproach()
@@ -523,6 +547,40 @@ void reg_f3d<T>::AllocateWarped()
     return;
 }
 /* \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/ */
+
+template <class T>
+void reg_f3d<T>::AllocateandcpyTargetImage()
+{
+
+    return;
+}
+	
+template <class T>
+void reg_f3d<T>::Cleargputargetimage()
+{
+
+    return;
+}
+
+
+template <class T>
+void reg_f3d<T>::randomsampling()
+{
+
+    return;
+}
+	
+
+template <class T>
+void reg_f3d<T>::clearrandomsampling()
+{
+
+    return;
+}
+
+
+	
+	
 template <class T>
 void reg_f3d<T>::ClearWarped()
 {
@@ -1858,6 +1916,10 @@ void reg_f3d<T>::DisplayCurrentLevelParameters()
             printf("[%s] \t* image spacing: %g x %g x %g mm\n", this->executableName,
                    this->controlPointGrid->dx, this->controlPointGrid->dy,
                    this->controlPointGrid->dz);
+			if(this->userandomsampling)
+			{
+				printf("[%s] Total samples=%d Percents=%f Number of random samples=%d\n",this->executableName,this->max_value,this->samples,this->activeVoxelNumber[this->currentLevel]);
+			}
 #ifdef NDEBUG
         }
 #endif
@@ -1887,16 +1949,24 @@ void reg_f3d<T>::Run_f3d()
 #endif
 
     if(!this->initialised) this->Initisalise_f3d();
+	
 
     // Compute the resolution of the progress bar
     float iProgressStep=1, nProgressSteps;
     nProgressSteps = this->levelToPerform*this->maxiterationNumber;
-
+	struct timeval t1, t2;
 
     for(this->currentLevel=0;
         this->currentLevel<this->levelToPerform;
         this->currentLevel++){
-
+		
+		if(this->userandomsampling){
+		this->max_value=this->activeVoxelNumber[this->currentLevel];
+		//this->activeVoxelNumber[this->currentLevel]=this->samples;
+		float temp=/* (static_cast<float> */(this->samples)/100;
+		this->activeVoxelNumber[this->currentLevel]=static_cast<int>(this->activeVoxelNumber[this->currentLevel]*temp);
+		
+		}
         if(this->usePyramid){
             this->currentReference = this->referencePyramid[this->currentLevel];
             this->currentFloating = this->floatingPyramid[this->currentLevel];
@@ -1914,10 +1984,14 @@ void reg_f3d<T>::Run_f3d()
         this->AllocateWarpedGradient();
         this->AllocateVoxelBasedMeasureGradient();
         this->AllocateJointHistogram();
+		
+		//ALLOCATE AND COPY TARGET IMAGE ON GPU
+		this->AllocateandcpyTargetImage();
 
         // The grid is refined if necessary
         this->AllocateCurrentInputImage();
-
+		//if(this->userandomsampling)this->randomsampling(this->samples);
+		
         // ALLOCATE IMAGES THAT DEPENDS ON THE CONTROL POINT IMAGE
         this->AllocateNodeBasedGradient();
         this->AllocateBestControlPointArray();
@@ -1927,14 +2001,16 @@ void reg_f3d<T>::Run_f3d()
         }
 
         this->DisplayCurrentLevelParameters();
-
+	
         T maxStepSize = (this->currentReference->dx>this->currentReference->dy)?this->currentReference->dx:this->currentReference->dy;
         maxStepSize = (this->currentReference->dz>maxStepSize)?this->currentReference->dz:maxStepSize;
         T currentSize = maxStepSize;
         T smallestSize = maxStepSize / 100.0f;
-
+		printf("[%s] MaxStepsize=%f \n",this->executableName,maxStepSize);
+		
+		//if (this->currentLevel==0) this->samples=this->activeVoxelNumber[this->currentLevel];
         // Compute initial penalty terms
-        double bestWJac = this->ComputeJacobianBasedPenaltyTerm(1); // 20 iterations
+        /* double bestWJac = this->ComputeJacobianBasedPenaltyTerm(1); // 20 iterations
 
         double bestWBE = this->ComputeBendingEnergyPenaltyTerm();
 
@@ -1948,14 +2024,23 @@ void reg_f3d<T>::Run_f3d()
             this->WarpFloatingImage(this->interpolation);
             bestWMeasure = this->ComputeSimilarityMeasure();
         }
-
+		
+		
+		
         // Compute the Inverse consistency penalty term if required
-        double bestIC = this->GetInverseConsistencyPenaltyTerm();
+        double bestIC = this->GetInverseConsistencyPenaltyTerm(); */
 
         // Evalulate the objective function value
-        double bestValue = bestWMeasure - bestWBE - bestWLE - bestWL2 - bestWJac - bestIC;
+        //double bestValue = bestWMeasure - bestWBE - bestWLE - bestWL2 - bestWJac - bestIC;
+		double bestValue = 0,elapsedTime=0.0 ; 
+		double bestWMeasure = 0.0;
+		double bestWBE=0.0;
+		double bestWLE=0.0;
+		double bestWL2=0.0;
+		double bestIC=0.0;
+		double bestWJac=0.0;
 
-#ifdef NDEBUG
+/* #ifdef NDEBUG
         if(this->verbose){
 #endif
             if(this->useSSD)
@@ -1970,15 +2055,24 @@ void reg_f3d<T>::Run_f3d()
                 printf("[%s] Initial Inverse consistency value: %g\n", this->executableName, bestIC);
 #ifdef NDEBUG
         }
-#endif
+#endif */
         // The initial objective function values are kept
-
+		//if(this->userandomsampling) this->clearrandomsampling();
         this->currentIteration = 0;
+		
+		//if (this->currentLevel==2) this->param_a*=1.75; 
+		 //T addedStep=0.0f;
         while(this->currentIteration<this->maxiterationNumber){
 
-            if(currentSize<=smallestSize)
-                break;
-
+          /*   if(currentSize<=smallestSize)
+                break; */
+			gettimeofday(&t1, NULL);
+			if(this->userandomsampling) this->randomsampling();
+			gettimeofday(&t2, NULL);
+			elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+			elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
+			//printf("[NiftyReg F3D] ramdom sampling time=%f msec\n", elapsedTime);
+			//exit(1);
             // Compute the gradient of the similarity measure
             if(this->similarityWeight>0){
                 this->WarpFloatingImage(this->interpolation);
@@ -2006,23 +2100,23 @@ void reg_f3d<T>::Run_f3d()
             this->GetL2NormDispGradient();
             this->GetInverseConsistencyGradient();
 
-            T maxLength = this->GetMaximalGradientLength();
+ /*            T maxLength = this->GetMaximalGradientLength();
 #ifndef NDEBUG
             printf("[NiftyReg DEBUG] Objective function gradient maximal length: %g\n",maxLength);
 #endif
             if(maxLength==0){
                 printf("No Gradient ... exit\n");
                 exit(1);
-            }
+            } */
 
             // A line ascent is performed
             int lineIteration = 0;
-            currentSize=maxStepSize;
-            T addedStep=0.0f;
-            while(currentSize>smallestSize &&
+            currentSize=maxStepSize*(this->param_a)/pow((this->param_Astep+currentIteration),this->param_alfa);
+            T addedStep=0.0f;//bestValue=0;
+           /*  while(currentSize>smallestSize &&
                   lineIteration<12 &&
-                  this->currentIteration<this->maxiterationNumber){
-                T currentLength = -currentSize/maxLength;
+                  this->currentIteration<this->maxiterationNumber){ */
+                T currentLength = -currentSize/* /maxLength */;
 #ifndef NDEBUG
                 printf("[NiftyReg DEBUG] Current added max step: %g\n", currentSize);
 #endif
@@ -2046,8 +2140,8 @@ void reg_f3d<T>::Run_f3d()
                 double currentIC = this->GetInverseConsistencyPenaltyTerm();
 
                 double currentValue = currentWMeasure - currentWBE - currentWLE - currentWL2 - currentWJac - currentIC;
-
-                if(currentValue>bestValue){
+				
+                if(1){
                     bestValue = currentValue;
                     bestWMeasure = currentWMeasure;
                     bestWBE = currentWBE;
@@ -2055,9 +2149,9 @@ void reg_f3d<T>::Run_f3d()
                     bestWL2 = currentWL2;
                     bestWJac = currentWJac;
                     bestIC = currentIC;
-                    addedStep += currentSize;
+                  /*   addedStep += currentSize;
                     currentSize*=1.1f;
-                    currentSize = (currentSize<maxStepSize)?currentSize:maxStepSize;
+				  currentSize = (currentSize<maxStepSize)?currentSize:maxStepS ize;*/
                     this->SaveCurrentControlPoint();
 #ifndef NDEBUG
                     printf("[NiftyReg DEBUG] [%i] objective function: %g = %g - %g - %g - %g - %g | KEPT\n",
@@ -2065,16 +2159,16 @@ void reg_f3d<T>::Run_f3d()
 #endif
                 }
                 else{
-                    currentSize*=0.5;
+                    //currentSize*=0.5;
 #ifndef NDEBUG
                     printf("[NiftyReg DEBUG] [%i] objective function: %g = %g - %g - %g - %g - %g | REJECTED\n",
                            this->currentIteration, currentValue, currentWMeasure, currentWBE, currentWLE, currentWL2,  currentWJac);
 #endif
                 }
-                lineIteration++;
-            }
-            this->RestoreCurrentControlPoint();
-            currentSize=addedStep;
+                /* lineIteration++;
+				  } */
+            //this->RestoreCurrentControlPoint();
+            //currentSize=addedStep;
 #ifdef NDEBUG
             if(this->verbose){
 #endif
@@ -2095,11 +2189,12 @@ void reg_f3d<T>::Run_f3d()
                     printf(" - (wJAC)%.2e", bestWJac);
                 if(bestIC!=0)
                     printf(" - (IC)%.2e", bestIC);
-                printf(" [+ %g mm]\n", addedStep);
+                printf(" [+ %g mm]\n", currentSize);
+				//printf(" [+ %g mm]\n", currentSize);
 #ifdef NDEBUG
             }
 #endif
-
+/* 
             if(addedStep==0.f) 
 	    {
 	      iProgressStep += this->maxiterationNumber - 1 - this->currentIteration;
@@ -2108,7 +2203,7 @@ void reg_f3d<T>::Run_f3d()
 		(*funcProgressCallback)(100.*iProgressStep/nProgressSteps, 
 					paramsProgressCallback);
 	      }
-	      break;
+	     // break;
 	    }
 	    else 
 	    {
@@ -2118,7 +2213,8 @@ void reg_f3d<T>::Run_f3d()
 		(*funcProgressCallback)(100.*iProgressStep/nProgressSteps, 
 					paramsProgressCallback);
 	      }
-	    }
+	    } */
+		if(this->userandomsampling) this->clearrandomsampling();
         }
 
         // FINAL FOLDING CORRECTION
@@ -2134,6 +2230,8 @@ void reg_f3d<T>::Run_f3d()
         this->ClearConjugateGradientVariables();
         this->ClearBestControlPointArray();
         this->ClearJointHistogram();
+		this->Cleargputargetimage();
+		
         if(this->usePyramid){
             nifti_image_free(this->referencePyramid[this->currentLevel]);this->referencePyramid[this->currentLevel]=NULL;
             nifti_image_free(this->floatingPyramid[this->currentLevel]);this->floatingPyramid[this->currentLevel]=NULL;

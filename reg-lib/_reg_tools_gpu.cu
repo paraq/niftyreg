@@ -46,6 +46,7 @@ void reg_voxelCentric2NodeCentric_gpu(nifti_image *targetImage,
     reg_voxelCentric2NodeCentric_kernel <<< G1, B1 >>> (*nodeNMIGradientArray_d);
     NR_CUDA_CHECK_KERNEL(G1,B1)
     NR_CUDA_SAFE_CALL(cudaUnbindTexture(gradientImageTexture))
+	//exit(1);
 }
 
 
@@ -201,6 +202,8 @@ void reg_gaussianSmoothing_gpu( nifti_image *image,
 {
     const int voxelNumber = image->nx * image->ny * image->nz;
     const int3 imageDim = make_int3(image->nx, image->ny, image->nz);
+	//printf("voxelNumber=%d \n",voxelNumber);
+	//exit(1);
 
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ImageDim, &imageDim,sizeof(int3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_VoxelNumber, &voxelNumber,sizeof(int3)))
@@ -284,6 +287,7 @@ void reg_smoothImageForCubicSpline_gpu( nifti_image *image,
 {
     const int voxelNumber = image->nx * image->ny * image->nz;
     const int3 imageDim = make_int3(image->nx, image->ny, image->nz);
+
 
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_ImageDim, &imageDim,sizeof(int3)))
     NR_CUDA_SAFE_CALL(cudaMemcpyToSymbol(c_VoxelNumber, &voxelNumber,sizeof(int)))

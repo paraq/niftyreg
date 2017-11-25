@@ -15,6 +15,8 @@
 #define _REG_RESAMPLING_KERNELS_CU
 
 #include "stdio.h"
+#include <curand.h>
+#include <curand_kernel.h>
 
 texture<float, 3, cudaReadModeElementType> sourceTexture;
 texture<float4, 1, cudaReadModeElementType> sourceMatrixTexture;
@@ -65,9 +67,11 @@ __global__ void reg_resampleSourceImage_kernel(float *resultArray)
 __global__ void reg_getSourceImageGradient_kernel(float4 *gradientArray)
 {
     const int tid= (blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
+	
     if(tid<c_ActiveVoxelNumber){
 
         //Get the real world position in the source space
+		//const int index=tex1Dfetch(maskTexture,tid);
         float4 realPosition = tex1Dfetch(positionFieldTexture,tid);
 	
         //Get the voxel-based position in the source space
@@ -138,4 +142,31 @@ __global__ void reg_getSourceImageGradient_kernel(float4 *gradientArray)
 }
 /* *************************************************************** */
 /* *************************************************************** */
+
+__global__ void init(unsigned int seed, curandState_t* states) {
+
+  /* we have to initialize the state */
+  curand_init(seed, /* the seed can be the same for each core, here we pass the time in from the CPU */
+              threadIdx.x, /* the sequence number should be different for each core (unless you want all
+                             cores to get the same sequence of numbers for some reason - use thread id! */
+              0, /* the offset is how much extra we advance in the sequence for each call, can be 0 */
+              &states[threadIdx.x]);
+}
+
+
+__global__ void reg_randomsamplingMask_kernel (curandState_t* states,int *mask,int samples,int activeVoxelNumber,unsigned int seed)
+{
+	const int tid= (blockIdx.x)*blockDim.x+threadIdx.x;
+	if (tid < samples)
+	{
+		 curand_init(seed, /* the seed can be the same for each core, here we pass the time in from the CPU */
+              tid, /* the sequence number should be different for each core (unless you want all
+                             cores to get the same sequence of numbers for some reason - use thread id! */
+              0, /* the offset is how much extra we advance in the sequence for each call, can be 0 */
+              &states[tid]);
+		mask[tid]= curand(&states[threadIdx.x]) % (activeVoxelNumber);
+		
+	}
+	return;
+}
 #endif
