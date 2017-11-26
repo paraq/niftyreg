@@ -7,7 +7,7 @@ NiftyRegSGD is a high performance implementation of non-rigid B-spline registrat
 
 Command-line example
 
-> reg_f3d -ref baseline_1_crop.nii -flo followup_1_crop.nii -res p000_Aard_out.nii-aff affine_matrix_p000_Aard_1.txt -cpp p000_Aard_cpp.nii-rdmsam 1 -maxit 100 -SGD 0.25 20 0.9 -noConj -ln 3 -gpu
+> reg_f3d -ref baseline_1_crop.nii -flo followup_1_crop.nii -res p000_Aard_out.nii -aff affine_matrix_p000_Aard_1.txt -cpp p000_Aard_cpp.nii -rdmsam 1 -maxit 100 -SGD 0.25 20 0.9 -noConj -ln 3 -gpu
 
 - ref = fixed or reference image
 - flo = floting or moving image 
