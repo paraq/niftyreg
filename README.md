@@ -1,9 +1,11 @@
-# NiftyregSGD
+# NiftyRegSGD
 
 Currently, non-rigid image registration algorithms are too computationally intensive to use in time-critical ap-plications.
 NiftyRegSGD is a high performance implementation of non-rigid B-spline registration using stochastic gradient descent on GPU. This work is an extension of NiftyReg 1.3.9. This work is done as my master thesis at TU Delft and to download my thesis and paper, use [this link](https://repository.tudelft.nl/islandora/object/uuid%3A740d4ebd-2436-4b1a-a8db-cb1e0d56a980). The following paper discusses NiftyRegSGD.
 
 >P. Bhosale, M. Staring, Z. Al-Ars, and F. F. Berendsen, “GPU-based stochastic- gradient optimization for non-rigid medical image registration in time-critical applications,” SPIE on Medical Imaging, to appear in Feb 2018
+
+To install NiftyRegSGD, follow the similar instructions on [this link](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install)
 
 Command-line example
 
